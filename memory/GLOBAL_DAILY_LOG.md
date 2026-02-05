@@ -17,3 +17,5 @@
 **MCP validation**: tools/list (4 tools), workflow_list (11 workflows) — PASS. README updated with setup notes (config location, path format, Windows fallback) and test results.
 
 **Phase C bootstrap + Piece 1**: Branch feature/phase-c-web-status-ui created. PRD (PHASE-C-PRD.md), DEVELOPMENT-POLICY.md, workflow (phase-c-web-status-ui-workflow.yaml), scripts (setup_git, validate_git), web-status-ui minimal server. Server reads WAITING_ON.md. ESLint passes. Gate 1 UAT pending.
+
+**Phase C complete**: All 3 pieces implemented — Piece 1 (WAITING_ON), Piece 2 (workflow-state.json + execution-log), Piece 3 (project list + pending gates). Gates: Code review, AI UAT (agent-browser), User UAT for each piece. Final UAT approved; merged feature/phase-c-web-status-ui to main; pushed to origin. **Next**: Phase D Web Workflow Builder.

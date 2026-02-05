@@ -31,8 +31,16 @@ This rule applies when:
 - "Which projects have paused workflows?"
 - "What projects have paused sprints?"
 - "Where can I resume?"
+- **Sprint start** (route to Project AI; reads NEXT_STEPS.md):
+  - "Start the next sprint"
+  - "How do I start the next sprint?"
+  - "Start Phase D" (or "Start Phase [X]")
+  - "How to proceed?"
+  - "What's next?"
 
 **Routes to**: Project AI
+
+**For sprint start patterns**: Project AI reads `memory/projects/<project>/NEXT_STEPS.md` and returns What's Next + How to Start + How to Ask.
 
 **Example**:
 ```

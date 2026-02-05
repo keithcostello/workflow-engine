@@ -12,10 +12,11 @@ Usage:
 For AI assistant usage, share the workflow YAML and the AI will execute
 tasks, pausing at HITL gates for user input.
 """
-import yaml
-from typing import Dict, List, Any, Optional
-from enum import Enum
+import re
 import sys
+import yaml
+from enum import Enum
+from typing import Dict, List, Any, Optional
 
 
 class HITLType(Enum):
@@ -69,8 +70,6 @@ class WorkflowExecutor:
                 self._handle_complete(task, result)
             elif result['status'] == 'error':
                 self._handle_error(task, result)
-            elif result['status'] == 'condition':
-                self._handle_condition(task, result)
     
     def _execute_task(self, task: Dict) -> Dict:
         """Execute a single task."""
@@ -175,10 +174,23 @@ class WorkflowExecutor:
         return options[0]  # Simulated
     
     def _handle_complete(self, task: Dict, result: Dict):
-        """Handle task completion."""
+        """Handle task completion. Conditions (from subagent result) override on_complete when matched."""
         task_id = task['id']
         self.task_states[task_id]['status'] = TaskStatus.COMPLETE.value
         
+        # Evaluate conditions first (use subagent result from result.get('data', {}))
+        conditions = task.get('conditions', [])
+        subagent_result = result.get('data', {})
+        for condition in conditions:
+            if self._evaluate_condition(condition['if'], subagent_result):
+                target = condition.get('then')
+                if target == 'next':
+                    self.current_task_index += 1
+                else:
+                    self._jump_to_task(target)
+                return
+        
+        # No condition matched: use on_complete
         on_complete = task.get('on_complete', 'next')
         if on_complete == 'next':
             self.current_task_index += 1
@@ -198,27 +210,16 @@ class WorkflowExecutor:
         else:
             self._jump_to_task(on_error)
     
-    def _handle_condition(self, task: Dict, result: Dict):
-        """Handle conditional branching."""
-        conditions = task.get('conditions', [])
-        
-        for condition in conditions:
-            # Evaluate condition (simplified - would need proper evaluation)
-            condition_met = self._evaluate_condition(condition['if'], result)
-            
-            if condition_met:
-                target = condition['then']
-                if target == 'next':
-                    self.current_task_index += 1
-                else:
-                    self._jump_to_task(target)
-                return
-    
-    def _evaluate_condition(self, condition: str, result: Dict) -> bool:
-        """Evaluate a condition string (simplified)."""
-        # In real implementation, would properly parse and evaluate
-        # For now, just check if condition mentions something in result
-        return True  # Placeholder
+    def _evaluate_condition(self, condition_expr: str, subagent_result: Dict) -> bool:
+        """Evaluate condition using subagent result. Supports expressions like result == 'pass' or result == 'fail'."""
+        match = re.match(r"(\w+)\s*==\s*['\"]([^'\"]+)['\"]", condition_expr.strip())
+        if not match:
+            return False
+        var_name, expected = match.group(1), match.group(2)
+        actual = subagent_result.get(var_name)
+        if actual is None:
+            return False
+        return str(actual) == expected
     
     def _jump_to_task(self, task_id: str):
         """Jump to a specific task by ID."""

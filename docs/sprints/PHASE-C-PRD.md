@@ -28,7 +28,7 @@
 - **Piece 1**: Minimal server + read WAITING_ON.md
 - **Piece 2**: Add workflow-state.json + execution-log
 - **Piece 3**: Project list + pending gates UI
-- **Gates**: UAT + code quality at each piece. Final stage = user UAT (HITL). No push to main until user approves.
+- **Gates**: Code review (AI) → AI UAT (agent-browser) at each piece. Fail → bug report → developer fixes and resubmits. Final stage = user UAT (HITL). No push to main until user approves.
 
 ---
 
@@ -46,12 +46,12 @@
 | Phase | Task | Gate |
 |-------|------|------|
 | 0 | setup_git (create branch/worktree) + validate_git | Automated pass or STOP |
-| 1 | Piece 1: Minimal server + WAITING_ON | Code review → AI UAT (agent-browser) → User UAT (HITL) |
-| 2 | Piece 2: workflow-state.json + execution-log | Code review → AI UAT (agent-browser) → User UAT (HITL) |
-| 3 | Piece 3: Project list + pending gates | Code review → AI UAT (agent-browser) → User UAT (HITL) |
+| 1 | Piece 1: Minimal server + WAITING_ON | Code review (AI) → AI UAT (agent-browser). Fail → bug report → resubmit |
+| 2 | Piece 2: workflow-state.json + execution-log | Code review (AI) → AI UAT (agent-browser). Fail → bug report → resubmit |
+| 3 | Piece 3: Project list + pending gates | Code review (AI) → AI UAT (agent-browser). Fail → bug report → resubmit |
 | 4 | User UAT (final) | HITL — no push to main until approved |
 
-**Per-piece gate sequence**: Developer implements → Code review (reviewer) → AI UAT (validator, agent-browser/Playwright) → User UAT (HITL)
+**Per-piece gate sequence**: Developer implements → Code review (reviewer, pass/fail) → AI UAT (validator, agent-browser). On fail: bug report written; developer fixes and resubmits. User UAT only at final.
 
 ---
 

@@ -1,5 +1,6 @@
 # Phase B MCP Sprint Workflow
-# Walking skeleton methodology: piece → HITL validate → piece → HITL validate
+# Walking skeleton: piece 1–3 → reviewer (AI) → tester_uat (AI). Fail → bug report → dev_piece_3.
+# Code review and UAT are AI-only gates. Final HITL at complete.
 # Run: Execute workflows/phase-b-mcp-sprint-workflow.yaml
 # PRD: docs/sprints/PHASE-B-MCP-SPRINT-PRD.md
 
@@ -96,7 +97,7 @@ workflow:
         message: "Tools work. Walking skeleton validated? Proceed to Reviewer?"
       on_complete: "reviewer_review"
 
-    # Phase 4: Reviewer
+    # Phase 4: Reviewer (AI code review — pass/fail, bug report on fail)
     - id: "reviewer_review"
       name: "Reviewer Review Code"
       role: "reviewer"
@@ -105,10 +106,7 @@ workflow:
         file: "node_modules/workflow-engine/mcp-server/"
         prd: "node_modules/workflow-engine/docs/sprints/PHASE-B-MCP-SPRINT-PRD.md"
       hitl:
-        type: "question"
-        message: "Review complete. Pass or fail?"
-        options: ["pass", "fail"]
-        on_fail: "dev_piece_3"
+        type: "none"
       conditions:
         - if: "result == 'pass'"
           then: "tester_uat"
@@ -116,7 +114,7 @@ workflow:
           then: "dev_piece_3"
       on_complete: "tester_uat"
 
-    # Phase 5: Tester UAT
+    # Phase 5: Tester UAT (AI UAT — pass/fail, bug report on fail)
     - id: "tester_uat"
       name: "Tester UAT"
       role: "tester"
@@ -125,10 +123,7 @@ workflow:
         validation: "npm install, npm run build, server starts, tools listed"
         config: "Cursor MCP config example"
       hitl:
-        type: "question"
-        message: "UAT pass or fail?"
-        options: ["pass", "fail"]
-        on_fail: "dev_piece_3"
+        type: "none"
       conditions:
         - if: "result == 'pass'"
           then: "complete"

@@ -17,6 +17,7 @@ This rule applies when:
 - User uses explicit command: "Ask Project AI: [question]"
 - User asks about a project (e.g., "What's the status of orchestration-training?")
 - User asks "What's blocking?" or "What's next?"
+- User asks "Start the next sprint", "How do I start the next sprint?", "Start Phase D", "How to proceed?"
 - User asks about project workflows
 - User asks about project state
 - User asks "Which projects have paused workflows?" or "Where can I resume?" (discovery when they don't know which sprint/project)
@@ -37,6 +38,7 @@ This rule applies when:
 
 ### Project Memory
 - `memory/projects/<project>/WAITING_ON.md` - Project-specific state
+- `memory/projects/<project>/NEXT_STEPS.md` - What's next; how to start (phrases, commands, prerequisites)
 - `memory/workflows/<project>/execution-log.md` - Per-action workflow log (project-specific)
 - `memory/projects/<project>/workflow-state.json` - Paused workflow state (resume-sprint)
 - `memory/GLOBAL_DAILY_LOG.md` - Historical log
@@ -93,10 +95,11 @@ This rule applies when:
 ### Step 2: Read Project Memory
 
 1. Read `memory/projects/<project>/WAITING_ON.md`
-2. Read `memory/workflows/<project>/execution-log.md` (for workflow run history)
-3. Check `memory/projects/<project>/workflow-state.json` — if exists and `status == "paused"`: workflow is waiting at HITL gate
-4. Read `memory/GLOBAL_DAILY_LOG.md` (for history)
-5. Check for workflow assignments (`.cursor/workflows/active-workflow.yaml`)
+2. **If user asks "What's next?", "How do I start?", "How to proceed?", "Start the next sprint", or "Start Phase X"**: Read `memory/projects/<project>/NEXT_STEPS.md` if it exists. Include its "How to Start" and "How to Ask" sections in your response.
+3. Read `memory/workflows/<project>/execution-log.md` (for workflow run history)
+4. Check `memory/projects/<project>/workflow-state.json` — if exists and `status == "paused"`: workflow is waiting at HITL gate
+5. Read `memory/GLOBAL_DAILY_LOG.md` (for history)
+6. Check for workflow assignments (`.cursor/workflows/active-workflow.yaml`)
 
 ### Step 3: Answer Query
 
@@ -173,6 +176,7 @@ STANDARD_MEMORY_UPDATE:
 2. **Show**: "[Project AI: Workflow completed, updating state]"
 3. Execute STANDARD_MEMORY_UPDATE
 4. Update next actions in WAITING_ON.md
+5. **If NEXT_STEPS.md exists**: Update it with new phase and "How to Start" (workflow path, prerequisites)
 
 ### When Blocker Occurs
 1. Task AI or Workflow AI reports blocker
@@ -225,21 +229,26 @@ Blockers: None currently
 If there were blockers, I would list them here.
 ```
 
-### Example 3: Next Actions Query
+### Example 3: Next Actions Query / How to Start
 
-**User**: "What's next for orchestration-training?"
+**User**: "What's next for orchestration-training?" or "Start the next sprint" or "How do I start the next sprint?"
 
 **You (Project AI)**:
-1. Read project memory
-2. Check next actions
-3. Answer:
+1. Read `memory/projects/orchestration-training/WAITING_ON.md`
+2. **Read `memory/projects/orchestration-training/NEXT_STEPS.md`** if it exists
+3. Answer with NEXT_STEPS content (What's Next, How to Start, How to Ask):
 ```
 Project: orchestration-training
-Next Actions:
-1. Test minimal-workflow.yaml
-2. Complete workflow training (INSTRUCTIONAL-GUIDE.md)
-3. Create your first workflow
-4. Build MCP server (after seeing it work)
+Current Phase: Phase D (Web Workflow Builder)
+
+What's Next: Phase D — Web app to build/edit workflow YAML; project status dashboard with selector; pending messages.
+
+How to Start:
+1. If workflow exists: Say "Execute workflows/phase-d-web-workflow-builder-workflow.yaml"
+2. If workflow does not exist: Create it first (see PHASE-D-PRD.md), then execute.
+3. Prerequisites: setup_git and validate_git scripts for Phase D branch.
+
+How to Ask: "Start the next sprint", "How do I start the next sprint?", "Start Phase D", "How to proceed?", "What's next?"
 ```
 
 ## Important Notes

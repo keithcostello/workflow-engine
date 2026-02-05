@@ -15,8 +15,9 @@
 
 ## UAT and Merge
 
-- Final stage is **always** user UAT (HITL).
-- **No push to main** until user approves.
+- **AI code review** and **AI UAT** (agent-browser) are automated pass/fail gates. No user approval per piece.
+- On fail: reviewer or validator writes a bug report; developer fixes and resubmits.
+- Final stage is **always** user UAT (HITL). **No push to main** until user approves.
 
 ---
 

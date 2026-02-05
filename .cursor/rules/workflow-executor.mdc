@@ -150,11 +150,14 @@ For each task in order:
    - No interaction, continue automatically (no state write)
 
 6. **Evaluate Conditions** (if present):
-   - Check each condition's `if` statement
+   - **Subagent result**: Capture the subagent's return. Reviewers, validators, and testers return structured output:
+     - Pass: `{ result: "pass" }` or `[Role: result=pass]`
+     - Fail: `{ result: "fail", bug_report_path: "memory/workflows/<project>/bug_reports/<task_id>_<timestamp>.md" }` or `[Role: result=fail, bug_report_path=<path>]`
+   - **Evaluate** each condition's `if` using the subagent result (e.g., `result == 'pass'` or `result == 'fail'`)
    - If condition matches:
      - If `then == 'next'`: Move to next task
-     - Otherwise: Jump to task specified in `then`
-   - If no conditions match: Move to next task
+     - Otherwise: Jump to task specified in `then` (when branching to developer on fail, pass `bug_report_path` in params)
+   - If no conditions match: Use `on_complete` (move to next task or jump)
 
 7. **Handle Completion**:
    - If `on_complete == 'next'`: `current_task_index += 1`
@@ -181,9 +184,10 @@ If task has `retry` section:
 ### Step 5: Conditional Branching
 
 After task completes, check `conditions`:
-- Evaluate each `if` statement
-- If true: Execute `then` action
-- Can jump to different tasks or continue
+- **Source**: Use the subagent's return (e.g., `result`, `bug_report_path`). See `docs/design/bug-report-convention.md`.
+- Evaluate each `if` statement against that result (e.g., `result == 'pass'` or `result == 'fail'`)
+- If true: Execute `then` action (jump to task or next)
+- If no condition matches: Use `on_complete`
 
 ## HITL Gate Handling (Orchestrator → User)
 

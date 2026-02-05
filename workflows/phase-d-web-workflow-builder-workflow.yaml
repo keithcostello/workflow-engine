@@ -1,0 +1,241 @@
+# Phase D Web Workflow Builder Workflow
+# Walking skeleton: setup_git → validate_git → Piece 1–4 (each: code_review → ai_uat; fail → bug report → piece_N)
+# Per-piece gates: AI code review + AI UAT (agent-browser). No user UAT per piece. Final HITL only.
+# Run: Execute workflows/phase-d-web-workflow-builder-workflow.yaml
+# PRD: docs/sprints/PHASE-D-PRD.md
+#
+# Git (canonical): branch=feature/phase-d-web-workflow-builder, worktree=../workflow-engine-phase-d (optional)
+
+workflow:
+  name: "Phase D Web Workflow Builder Workflow"
+  version: "1.0"
+
+  roles:
+    developer:
+      mode: "agent"
+      description: "Implements workflow builder and dashboard pieces"
+    reviewer:
+      mode: "plan"
+      description: "Reviews code against PRD"
+    validator:
+      mode: "agent"
+      description: "Validates git context, runs code quality, AI UAT via agent-browser"
+
+  tasks:
+    # Piece 0: setup_git — Create branch/worktree
+    - id: "setup_git"
+      name: "Setup Git (create branch/worktree)"
+      role: "developer"
+      action: "implement"
+      params:
+        deliverable: "Run scripts/setup_git_phase_d.sh (or setup_git_phase_d.ps1 on Windows)"
+        validation: "Branch feature/phase-d-web-workflow-builder exists and is checked out"
+      hitl:
+        type: "none"
+      on_complete: "validate_git"
+
+    # Piece 0: validate_git — Verify context
+    - id: "validate_git"
+      name: "Validate Git (branch/worktree)"
+      role: "validator"
+      action: "implement"
+      params:
+        deliverable: "Run scripts/validate_git_phase_d.sh (or validate_git_phase_d.ps1 on Windows)"
+        validation: "Script exits 0; we are on feature/phase-d-web-workflow-builder"
+      hitl:
+        type: "none"
+      on_complete: "piece_1"
+
+    # Piece 1: List workflows + view YAML (read-only)
+    - id: "piece_1"
+      name: "Piece 1: List workflows + view YAML (read-only)"
+      role: "developer"
+      action: "implement"
+      params:
+        prd_path: "docs/sprints/PHASE-D-PRD.md"
+        piece: 1
+        deliverable: "Minimal web app; list workflows from workflows/; view YAML (read-only)"
+        validation: "UI lists workflows, displays YAML content read-only"
+      hitl:
+        type: "none"
+      on_complete: "piece_1_code_review"
+
+    - id: "piece_1_code_review"
+      name: "Piece 1: Code review"
+      role: "reviewer"
+      action: "review"
+      params:
+        file: "web-status-ui/"
+        criteria: "PRD compliance, workflow list, YAML view (read-only)"
+      hitl:
+        type: "none"
+      conditions:
+        - if: "result == 'pass'"
+          then: "piece_1_ai_uat"
+        - if: "result == 'fail'"
+          then: "piece_1"
+      on_complete: "piece_1_ai_uat"
+
+    - id: "piece_1_ai_uat"
+      name: "Piece 1: AI UAT (agent-browser)"
+      role: "validator"
+      action: "implement"
+      params:
+        deliverable: "Start app, use agent-browser to verify workflow list and YAML view"
+        validation: "AI confirms UI lists workflows and displays YAML read-only"
+      hitl:
+        type: "none"
+      conditions:
+        - if: "result == 'pass'"
+          then: "piece_2"
+        - if: "result == 'fail'"
+          then: "piece_1"
+      on_complete: "piece_2"
+
+    # Piece 2: Edit workflow name, version; add/edit/remove roles
+    - id: "piece_2"
+      name: "Piece 2: Edit workflow name, version; add/edit/remove roles"
+      role: "developer"
+      action: "implement"
+      params:
+        prd_path: "docs/sprints/PHASE-D-PRD.md"
+        piece: 2
+        deliverable: "Edit workflow name, version; add/edit/remove roles"
+        validation: "UI allows editing workflow metadata and roles"
+      hitl:
+        type: "none"
+      on_complete: "piece_2_code_review"
+
+    - id: "piece_2_code_review"
+      name: "Piece 2: Code review"
+      role: "reviewer"
+      action: "review"
+      params:
+        file: "web-status-ui/"
+        criteria: "PRD compliance, workflow name/version edit, roles CRUD"
+      hitl:
+        type: "none"
+      conditions:
+        - if: "result == 'pass'"
+          then: "piece_2_ai_uat"
+        - if: "result == 'fail'"
+          then: "piece_2"
+      on_complete: "piece_2_ai_uat"
+
+    - id: "piece_2_ai_uat"
+      name: "Piece 2: AI UAT (agent-browser)"
+      role: "validator"
+      action: "implement"
+      params:
+        deliverable: "Start app, use agent-browser to verify workflow edit and roles"
+        validation: "AI confirms UI edits workflow name, version, roles"
+      hitl:
+        type: "none"
+      conditions:
+        - if: "result == 'pass'"
+          then: "piece_3"
+        - if: "result == 'fail'"
+          then: "piece_2"
+      on_complete: "piece_3"
+
+    # Piece 3: Add/edit/remove tasks; configure HITL; on_complete routing
+    - id: "piece_3"
+      name: "Piece 3: Add/edit/remove tasks; configure HITL; on_complete routing"
+      role: "developer"
+      action: "implement"
+      params:
+        prd_path: "docs/sprints/PHASE-D-PRD.md"
+        piece: 3
+        deliverable: "Add/edit/remove tasks; configure HITL (type, message, options); on_complete routing"
+        validation: "UI allows task CRUD, HITL config, on_complete"
+      hitl:
+        type: "none"
+      on_complete: "piece_3_code_review"
+
+    - id: "piece_3_code_review"
+      name: "Piece 3: Code review"
+      role: "reviewer"
+      action: "review"
+      params:
+        file: "web-status-ui/"
+        criteria: "PRD compliance, tasks CRUD, HITL config, on_complete"
+      hitl:
+        type: "none"
+      conditions:
+        - if: "result == 'pass'"
+          then: "piece_3_ai_uat"
+        - if: "result == 'fail'"
+          then: "piece_3"
+      on_complete: "piece_3_ai_uat"
+
+    - id: "piece_3_ai_uat"
+      name: "Piece 3: AI UAT (agent-browser)"
+      role: "validator"
+      action: "implement"
+      params:
+        deliverable: "Start app, use agent-browser to verify tasks and HITL config"
+        validation: "AI confirms UI manages tasks and HITL"
+      hitl:
+        type: "none"
+      conditions:
+        - if: "result == 'pass'"
+          then: "piece_4"
+        - if: "result == 'fail'"
+          then: "piece_3"
+      on_complete: "piece_4"
+
+    # Piece 4: Dashboard — Project selector + pending messages
+    - id: "piece_4"
+      name: "Piece 4: Dashboard — Project selector + pending messages"
+      role: "developer"
+      action: "implement"
+      params:
+        prd_path: "docs/sprints/PHASE-D-PRD.md"
+        piece: 4
+        deliverable: "Project status dashboard with project selector; pending messages (extends Phase C)"
+        validation: "UI has project selector, displays pending HITL messages"
+      hitl:
+        type: "none"
+      on_complete: "piece_4_code_review"
+
+    - id: "piece_4_code_review"
+      name: "Piece 4: Code review"
+      role: "reviewer"
+      action: "review"
+      params:
+        file: "web-status-ui/"
+        criteria: "PRD compliance, project selector, pending messages"
+      hitl:
+        type: "none"
+      conditions:
+        - if: "result == 'pass'"
+          then: "piece_4_ai_uat"
+        - if: "result == 'fail'"
+          then: "piece_4"
+      on_complete: "piece_4_ai_uat"
+
+    - id: "piece_4_ai_uat"
+      name: "Piece 4: AI UAT (agent-browser)"
+      role: "validator"
+      action: "implement"
+      params:
+        deliverable: "Start app, use agent-browser to verify project selector and pending messages"
+        validation: "AI confirms UI has project selector and pending messages"
+      hitl:
+        type: "none"
+      conditions:
+        - if: "result == 'pass'"
+          then: "uat_final"
+        - if: "result == 'fail'"
+          then: "piece_4"
+      on_complete: "uat_final"
+
+    # Final: User UAT
+    - id: "uat_final"
+      name: "User UAT (Final)"
+      role: "validator"
+      action: "complete"
+      hitl:
+        type: "approval"
+        message: "Phase D UAT complete. Approve to allow push to main. No push until you approve."
+      on_complete: "end"

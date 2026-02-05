@@ -1,8 +1,8 @@
 # Phase C UAT Checklist
 
-**User sign-off at each gate. No push to main until final UAT approved.**
+**AI code review and AI UAT are automated gates (pass/fail). On fail, bug report is written; developer fixes and resubmits. User sign-off only at final UAT. No push to main until final UAT approved.**
 
-**Gate sequence (per piece)**: Code review → AI UAT (agent-browser/Playwright) → User UAT (HITL)
+**Gate sequence (per piece)**: Code review (AI) → AI UAT (agent-browser/Playwright). User UAT only at final.
 
 **Requirement**: Playwright MCP or agent-browser must be configured in Cursor for AI UAT to run.
 
@@ -10,33 +10,33 @@
 
 ## Gate 1 (After Piece 1)
 
-- [ ] **Code review** completed (reviewer subagent)
-- [ ] **AI UAT** completed (validator uses agent-browser/Playwright to verify UI)
+- [ ] **Code review** completed (reviewer subagent — automated pass/fail)
+- [ ] **AI UAT** completed (validator uses agent-browser/Playwright to verify UI — automated pass/fail)
 - [ ] Server starts: `cd web-status-ui && npm run start` (port 3456-3458 fallback if in use)
 - [ ] Open http://localhost:PORT (check console for actual port)
 - [ ] WAITING_ON.md content displayed for orchestration-training
 - [ ] Code quality: `npm run lint` passes
-- [ ] **User UAT: Approve to proceed to Piece 2**
+- [ ] On fail: read bug report, fix, resubmit. No user approval at this gate.
 
 ---
 
 ## Gate 2 (After Piece 2)
 
-- [ ] **Code review** completed
-- [ ] **AI UAT** completed (agent-browser verifies workflow-state and execution-log)
+- [ ] **Code review** completed (automated pass/fail)
+- [ ] **AI UAT** completed (agent-browser verifies workflow-state and execution-log — automated pass/fail)
 - [ ] workflow-state.json displayed when workflow paused
 - [ ] execution-log last run status displayed
-- [ ] **User UAT: Approve to proceed to Piece 3**
+- [ ] On fail: read bug report, fix, resubmit. No user approval at this gate.
 
 ---
 
 ## Gate 3 (After Piece 3)
 
-- [ ] **Code review** completed
-- [ ] **AI UAT** completed (agent-browser verifies project list and pending gates)
+- [ ] **Code review** completed (automated pass/fail)
+- [ ] **AI UAT** completed (agent-browser verifies project list and pending gates — automated pass/fail)
 - [ ] Project list displayed
 - [ ] Pending gates shown per project
-- [ ] **User UAT: Approve Phase C complete**
+- [ ] On fail: read bug report, fix, resubmit. No user approval at this gate.
 
 ---
 

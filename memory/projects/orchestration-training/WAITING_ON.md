@@ -4,7 +4,7 @@
 
 ## Status
 
-**Phase F**: Complete | **Next**: Phase C (Web Status UI)
+**Phase C**: Complete | **Next**: Phase D (Web Workflow Builder)
 
 ## Completed
 
@@ -15,13 +15,14 @@
   - Repo: https://github.com/keithcostello/workflow-engine
   - npm install from GitHub validated in cursor_github_testing
   - AI-driven setup (memory, MCP config, rules)
+- Phase C Web Status UI (Piece 1–3, all gates, merged to main)
+  - web-status-ui/ reads WAITING_ON.md, workflow-state.json, execution-log.md
+  - Project list, pending gates per project
+  - Agent-browser AI UAT; Final UAT approved
 
 ## Next
 
-- **Phase C Piece 1**: Complete — Gate 1 UAT approved
-- Phase C Piece 2: Add workflow-state.json + execution-log — implemented, Gate 2 UAT pending
-- Phase C Piece 3: Project list + pending gates
-- Phase D: Web Workflow Builder (after C)
+- Phase D: Web Workflow Builder — web app to build/edit workflow YAML; add tasks, agents, HITL requirements
 
 ## Completed Post-Sprint
 

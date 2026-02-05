@@ -1,5 +1,6 @@
 # Phase C Web Status UI Workflow
-# Walking skeleton: setup_git → validate_git → Piece 1 → Gate 1 → Piece 2 → Gate 2 → Piece 3 → Gate 3
+# Walking skeleton: setup_git → validate_git → Piece 1–3 (each: code_review → ai_uat; fail → bug report → piece_N)
+# Per-piece gates: AI code review + AI UAT (agent-browser). No user UAT per piece. Final HITL only.
 # Run: Execute workflows/phase-c-web-status-ui-workflow.yaml
 # PRD: docs/sprints/PHASE-C-PRD.md
 #
@@ -68,6 +69,11 @@ workflow:
         criteria: "PRD compliance, port fallback (3456-3458), no obvious bugs"
       hitl:
         type: "none"
+      conditions:
+        - if: "result == 'pass'"
+          then: "piece_1_ai_uat"
+        - if: "result == 'fail'"
+          then: "piece_1"
       on_complete: "piece_1_ai_uat"
 
     - id: "piece_1_ai_uat"
@@ -75,19 +81,15 @@ workflow:
       role: "validator"
       action: "implement"
       params:
-        deliverable: "Start server, use agent-browser/Playwright to navigate to http://localhost:PORT, verify WAITING_ON content in page"
+        deliverable: "Start server, use agent-browser to navigate to http://localhost:PORT, verify WAITING_ON content in page"
         validation: "AI confirms UI displays WAITING_ON. Kill server after verification."
       hitl:
         type: "none"
-      on_complete: "piece_1_user_uat"
-
-    - id: "piece_1_user_uat"
-      name: "Piece 1: User UAT"
-      role: "validator"
-      action: "complete"
-      hitl:
-        type: "approval"
-        message: "Code review and AI UAT passed. User UAT: Server starts, WAITING_ON displayed? Proceed to Piece 2?"
+      conditions:
+        - if: "result == 'pass'"
+          then: "piece_2"
+        - if: "result == 'fail'"
+          then: "piece_1"
       on_complete: "piece_2"
 
     # Piece 2: workflow-state.json + execution-log
@@ -113,6 +115,11 @@ workflow:
         criteria: "PRD compliance, workflow-state and execution-log parsing"
       hitl:
         type: "none"
+      conditions:
+        - if: "result == 'pass'"
+          then: "piece_2_ai_uat"
+        - if: "result == 'fail'"
+          then: "piece_2"
       on_complete: "piece_2_ai_uat"
 
     - id: "piece_2_ai_uat"
@@ -124,15 +131,11 @@ workflow:
         validation: "AI confirms UI shows paused state and last run when files exist"
       hitl:
         type: "none"
-      on_complete: "piece_2_user_uat"
-
-    - id: "piece_2_user_uat"
-      name: "Piece 2: User UAT"
-      role: "validator"
-      action: "complete"
-      hitl:
-        type: "approval"
-        message: "Code review and AI UAT passed. User UAT: Paused state and execution log displayed? Proceed to Piece 3?"
+      conditions:
+        - if: "result == 'pass'"
+          then: "piece_3"
+        - if: "result == 'fail'"
+          then: "piece_2"
       on_complete: "piece_3"
 
     # Piece 3: Project list + pending gates
@@ -158,6 +161,11 @@ workflow:
         criteria: "PRD compliance, project scan, pending gates display"
       hitl:
         type: "none"
+      conditions:
+        - if: "result == 'pass'"
+          then: "piece_3_ai_uat"
+        - if: "result == 'fail'"
+          then: "piece_3"
       on_complete: "piece_3_ai_uat"
 
     - id: "piece_3_ai_uat"
@@ -169,15 +177,11 @@ workflow:
         validation: "AI confirms UI lists projects and shows pending gates"
       hitl:
         type: "none"
-      on_complete: "piece_3_user_uat"
-
-    - id: "piece_3_user_uat"
-      name: "Piece 3: User UAT"
-      role: "validator"
-      action: "complete"
-      hitl:
-        type: "approval"
-        message: "Code review and AI UAT passed. User UAT: Project list and pending gates displayed? Phase C complete?"
+      conditions:
+        - if: "result == 'pass'"
+          then: "uat_final"
+        - if: "result == 'fail'"
+          then: "piece_3"
       on_complete: "uat_final"
 
     # Final: User UAT

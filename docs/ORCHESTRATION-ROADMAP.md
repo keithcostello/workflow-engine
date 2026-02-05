@@ -39,7 +39,7 @@
 | MCP server | Done | Phase B |
 | Single compact loop (review→modify→review, max N) | Planned | Phase B (MVP 3) |
 | GitHub deployment validation (Cursor plugin) | Done | Phase F |
-| Web status UI | Planned | Phase C |
+| Web status UI | Done | Phase C |
 | Web workflow builder | Planned | Phase D |
 | Terminal install (install.sh, install.ps1) | Done | Phase E |
 
@@ -86,10 +86,11 @@
 
 **Goals**: 8
 
-### Phase C: Web Status UI
+### Phase C (Complete): Web Status UI
 
-- Web app reading memory files (workflow-state.json, WAITING_ON.md)
-- Project status, pending gates
+- ✅ Web app reading memory files (workflow-state.json, WAITING_ON.md, execution-log.md)
+- ✅ Project status, pending gates
+- ✅ web-status-ui/ with project list, workflow state, last run
 - Web-first (faster than Cursor Extension)
 
 **Goals**: 5
@@ -98,7 +99,11 @@
 
 - Web app to build/edit workflow YAML
 - Add tasks, agents, HITL requirements
+- Project status dashboard with project selector (multiple projects)
+- Pending messages display (HITL gates awaiting user response)
 - Web-first
+
+**Docs**: [PHASE-D-PRD.md](sprints/PHASE-D-PRD.md), [PHASE-D-UI-SPEC.md](sprints/PHASE-D-UI-SPEC.md)
 
 **Goals**: 6
 
@@ -121,10 +126,10 @@
 ## Phase Sequence
 
 ```
-A (done) → A.5 (done) → E (done) → B (done) → F (done) → C → D
+A (done) → A.5 (done) → E (done) → B (done) → F (done) → C (done) → D
 ```
 
-**Next**: Phase C (Web Status UI) — web app reading memory files, project status, pending gates.
+**Next**: Phase D (Web Workflow Builder) — web app to build/edit workflow YAML; project status dashboard with project selector and pending messages.
 
 ## Decisions
 

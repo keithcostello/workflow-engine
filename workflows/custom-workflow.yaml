@@ -1,0 +1,89 @@
+# Custom Workflow — Workflow Customization Proof (C1, C2, C4)
+# Proves YAML can be changed: C1 add task, C2 change prompt, C4 rename
+# Copy of minimal-workflow with modifications
+
+workflow:
+  name: "Custom Demo Workflow"  # C4: Renamed from "Minimal Demo Workflow"
+  version: "1.0"
+  
+  roles:
+    developer:
+      mode: "agent"
+      description: "Implements code"
+    
+    reviewer:
+      mode: "plan"
+      description: "Reviews work"
+  
+  tasks:
+    # Stage 1: Create File
+    - id: "create_file"
+      name: "Create Demo File"
+      role: "developer"
+      action: "create_file"
+      params:
+        path: "node_modules/workflow-engine/artifacts/custom-demo.txt"
+        content: "Hello from custom workflow!"
+      hitl:
+        type: "approval"
+        message: "File created. Approve to proceed?"  # C2: Changed prompt
+      on_complete: "next"
+    
+    # C1: NEW TASK — Inserted between create_file and modify_file
+    - id: "validate_file"
+      name: "Validate File"
+      role: "developer"
+      action: "modify_file"
+      params:
+        path: "node_modules/workflow-engine/artifacts/custom-demo.txt"
+        append: "\n[Validated]"
+      hitl:
+        type: "info"
+        message: "Validation step added to prove workflow can be customized."
+        auto_continue: true
+      on_complete: "next"
+    
+    # Stage 3: Modify File (was Stage 2)
+    - id: "modify_file"
+      name: "Modify File"
+      role: "developer"
+      action: "modify_file"
+      params:
+        path: "node_modules/workflow-engine/artifacts/custom-demo.txt"
+        append: "\nModified by custom workflow stage 3"
+      hitl:
+        type: "question"
+        message: "File modified. Does it look correct?"
+        options: ["yes", "no"]
+        on_no: "modify_file"
+      on_complete: "next"
+    
+    # Stage 4: Review
+    - id: "review"
+      name: "Review Work"
+      role: "reviewer"
+      action: "review"
+      params:
+        file: "node_modules/workflow-engine/artifacts/custom-demo.txt"
+      hitl:
+        type: "question"
+        message: "Review complete. Pass or fail?"
+        options: ["pass", "fail"]
+        on_fail: "modify_file"
+      conditions:
+        - if: "result == 'pass'"
+          then: "complete"
+        - if: "result == 'fail'"
+          then: "modify_file"
+      on_complete: "complete"
+    
+    # Stage 5: Complete
+    - id: "complete"
+      name: "Workflow Complete"
+      role: "developer"
+      action: "complete"
+      hitl:
+        type: "info"
+        message: "✅ Custom workflow completed successfully!"
+        auto_continue: true
+      on_complete: "end"

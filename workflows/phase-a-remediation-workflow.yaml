@@ -1,0 +1,113 @@
+# Phase A Remediation Workflow
+# Orchestrates validation of Phase A (walking skeleton)
+# Run: Execute workflows/phase-a-remediation-workflow.yaml
+
+workflow:
+  name: "Phase A Remediation Workflow"
+  version: "1.0"
+
+  roles:
+    validator:
+      mode: "agent"
+      description: "Validates Phase A deliverables and tests"
+
+  tasks:
+    - id: "verify_deliverables"
+      name: "Verify Phase A Deliverables Exist"
+      role: "validator"
+      action: "review"
+      params:
+        file: "node_modules/workflow-engine/.cursor/rules/workflow-executor.mdc"
+      hitl:
+        type: "question"
+        message: "Verify build_docker and run_container are in workflow-executor.mdc. Do workflows/docker-hello/ and docker-hello-workflow.yaml exist?"
+        options: ["yes", "no"]
+        on_no: "escalate"
+      conditions:
+        - if: "result == 'yes'"
+          then: "test_docker_workflow"
+        - if: "result == 'no'"
+          then: "escalate"
+      on_complete: "test_docker_workflow"
+
+    - id: "test_docker_workflow"
+      name: "Execute docker-hello-workflow"
+      role: "validator"
+      action: "review"
+      params:
+        file: "node_modules/workflow-engine/workflows/docker-hello-workflow.yaml"
+      hitl:
+        type: "question"
+        message: "Execute workflows/docker-hello-workflow.yaml (build_docker, run_container). Did it pass?"
+        options: ["pass", "fail"]
+      conditions:
+        - if: "result == 'pass'"
+          then: "create_test_log"
+        - if: "result == 'fail'"
+          then: "escalate"
+      on_complete: "create_test_log"
+
+    - id: "create_test_log"
+      name: "Create PHASE-A-TEST-LOG"
+      role: "validator"
+      action: "create_file"
+      params:
+        path: "node_modules/workflow-engine/docs/testing/PHASE-A-TEST-LOG.md"
+        content: |
+          # Phase A Test Log
+
+          **Purpose**: Validation of Phase A (Docker workflow + gate testing)
+          **Date**: 2025-02-05
+
+          ## Deliverables Checklist
+
+          | Deliverable | Exists | Verified |
+          |-------------|--------|----------|
+          | build_docker in workflow-executor.mdc | | |
+          | run_container in workflow-executor.mdc | | |
+          | workflows/docker-hello/ (Dockerfile, hello.py, requirements.txt) | | |
+          | workflows/docker-hello-workflow.yaml | | |
+          | docs/testing/GATE-SCENARIO-MATRIX.md | | |
+          | install.sh, install.ps1 | | |
+
+          ## Scenario Tests
+
+          | # | Scenario | Pass/Fail | Evidence |
+          |---|----------|-----------|----------|
+          | D1 | build_docker succeeds | | |
+          | D2 | Approval gate (A1) | | |
+          | D3 | run_container succeeds | | |
+          | D4 | Info gate (I1) | | |
+          | D5 | workflow_complete in log | | |
+
+          ## Phase A Result
+
+          - [ ] All deliverables exist
+          - [ ] docker-hello-workflow executed successfully
+          - [ ] Test log filled
+
+          **Phase A**: PASS / FAIL
+      hitl:
+        type: "approval"
+        message: "PHASE-A-TEST-LOG created. Approve to complete remediation?"
+      on_complete: "complete"
+
+    - id: "complete"
+      name: "Phase A Remediation Complete"
+      role: "validator"
+      action: "complete"
+      hitl:
+        type: "info"
+        message: "Phase A remediation complete. Update PHASE-A-TEST-LOG with actual results."
+        auto_continue: true
+      on_complete: "end"
+
+    - id: "escalate"
+      name: "Escalate"
+      role: "validator"
+      action: "complete"
+      hitl:
+        type: "info"
+        message: "Phase A remediation blocked. Fix issues and re-run workflow."
+        auto_continue: false
+      on_complete: "end"

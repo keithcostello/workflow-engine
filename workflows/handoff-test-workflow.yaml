@@ -1,0 +1,91 @@
+# Handoff Test Workflow
+# Covers: H2.9 (info wait), H2.10 (none), H3.2 (retry exhausted), H3.4 (on_error task_id)
+# Used for handoff scenario matrix testing
+
+workflow:
+  name: "Handoff Test Workflow"
+  version: "1.0"
+  
+  roles:
+    developer:
+      mode: "agent"
+      description: "Implements code"
+  
+  tasks:
+    # H2.10: type none - continue automatically
+    - id: "start"
+      name: "Start (None Gate)"
+      role: "developer"
+      action: "create_file"
+      params:
+        path: "node_modules/workflow-engine/artifacts/handoff-test.txt"
+        content: "Handoff test started"
+      hitl:
+        type: "none"
+      on_complete: "next"
+    
+    # H2.9: info with auto_continue: false - wait for approval
+    - id: "info_wait"
+      name: "Info Gate (Wait Approval)"
+      role: "developer"
+      action: "modify_file"
+      params:
+        path: "node_modules/workflow-engine/artifacts/handoff-test.txt"
+        append: "\nInfo gate reached"
+      hitl:
+        type: "info"
+        message: "Checkpoint: Info gate with auto_continue=false. Approve to continue?"
+        auto_continue: false
+      on_complete: "next"
+    
+    # H3.4: on_error jumps to fix_task (simulated - executor interprets)
+    - id: "may_fail"
+      name: "Task That May Fail"
+      role: "developer"
+      action: "modify_file"
+      params:
+        path: "node_modules/workflow-engine/artifacts/handoff-test.txt"
+        append: "\nMay-fail step"
+      hitl:
+        type: "approval"
+        message: "Approve to continue, or reject to simulate failure (on_error: fix_task)?"
+      on_complete: "next"
+      on_error: "fix_task"
+    
+    - id: "fix_task"
+      name: "Fix Task (on_error target)"
+      role: "developer"
+      action: "modify_file"
+      params:
+        path: "node_modules/workflow-engine/artifacts/handoff-test.txt"
+        append: "\nFix applied"
+      hitl:
+        type: "none"
+      on_complete: "retry_task"
+    
+    # H3.2: Retry exhausted - max_attempts 2, reject twice = escalate
+    - id: "retry_task"
+      name: "Retry Task (H3.2)"
+      role: "developer"
+      action: "modify_file"
+      params:
+        path: "node_modules/workflow-engine/artifacts/handoff-test.txt"
+        append: "\nRetry step"
+      hitl:
+        type: "question"
+        message: "Approve (yes) or reject (no) to trigger retry?"
+        options: ["yes", "no"]
+        on_no: "retry_task"
+      retry:
+        max_attempts: 2
+      on_complete: "complete"
+    
+    - id: "complete"
+      name: "Complete"
+      role: "developer"
+      action: "complete"
+      hitl:
+        type: "info"
+        message: "Handoff test complete!"
+        auto_continue: true
+      on_complete: "end"

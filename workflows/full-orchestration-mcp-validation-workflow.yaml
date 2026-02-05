@@ -1,0 +1,163 @@
+# Full Orchestration + MCP Validation Workflow
+# Exercises OT0-OT33, MCP tools (workflow_list, workflow_load, workflow_get_active), and workflow_handle_hitl HITL test
+# Use: Execute this workflow, respond at each gate. Pause at first gate to test resume-sprint (OT5).
+
+workflow:
+  name: "Full Orchestration MCP Validation Workflow"
+  version: "1.0"
+
+  roles:
+    developer:
+      mode: "agent"
+      description: "Implements code"
+    reviewer:
+      mode: "plan"
+      description: "Reviews work"
+    validator:
+      mode: "agent"
+      description: "Validates via MCP tools (workflow_list, workflow_load, workflow_get_active, workflow_handle_hitl)"
+
+  tasks:
+    # OT28, OT10: create_file → approval
+    - id: "create_file"
+      name: "Create Validation File"
+      role: "developer"
+      action: "create_file"
+      params:
+        path: "node_modules/workflow-engine/artifacts/full-orchestration-validation-demo.txt"
+        content: "Full orchestration MCP validation run."
+      hitl:
+        type: "approval"
+        message: "File created. Approve to continue? (Pause here to test resume-sprint.)"
+      on_complete: "next"
+
+    # OT29, OT14, OT11: modify_file + adhoc_hitl → question
+    - id: "modify_with_adhoc"
+      name: "Modify (Ad-hoc HITL)"
+      role: "developer"
+      action: "modify_file"
+      params:
+        path: "node_modules/workflow-engine/artifacts/full-orchestration-validation-demo.txt"
+        append: "{{ask_user}}"
+      adhoc_hitl:
+        trigger: "before_action"
+        question: "What content should I append? (Ad-hoc HITL - I must ask before proceeding.)"
+        param_to_fill: "append"
+      hitl:
+        type: "question"
+        message: "Modification done. Continue?"
+        options: ["yes", "no"]
+        on_no: "modify_with_adhoc"
+      on_complete: "next"
+
+    # OT30, OT7, OT21: review → question with on_fail
+    - id: "review"
+      name: "Review Work"
+      role: "reviewer"
+      action: "review"
+      params:
+        file: "node_modules/workflow-engine/artifacts/full-orchestration-validation-demo.txt"
+      hitl:
+        type: "question"
+        message: "Review complete. Pass or fail?"
+        options: ["pass", "fail"]
+        on_fail: "modify_with_adhoc"
+      conditions:
+        - if: "result == 'pass'"
+          then: "build_docker"
+        - if: "result == 'fail'"
+          then: "modify_with_adhoc"
+      on_complete: "build_docker"
+
+    # OT31: build_docker
+    - id: "build_docker"
+      name: "Build Docker Image"
+      role: "developer"
+      action: "build_docker"
+      params:
+        context_path: "node_modules/workflow-engine/workflows/docker-hello"
+        tag: "docker-hello:latest"
+      hitl:
+        type: "approval"
+        message: "Image built. Approve to run container?"
+      on_complete: "next"
+
+    # OT32: run_container
+    - id: "run_container"
+      name: "Run Container"
+      role: "developer"
+      action: "run_container"
+      params:
+        image: "docker-hello:latest"
+        rm: true
+      hitl:
+        type: "info"
+        message: "Container ran. Continuing to MCP validation."
+        auto_continue: true
+      on_complete: "next"
+
+    # OT13: MCP validation - workflow_list (hitl none)
+    - id: "validate_workflow_list"
+      name: "Validate workflow_list (MCP)"
+      role: "validator"
+      action: "validate"
+      params:
+        mcp_tool: "workflow_list"
+        workflow_engine_root: "node_modules/workflow-engine"
+        criteria: "Returns 11+ workflow names"
+      hitl:
+        type: "none"
+      on_complete: "next"
+
+    # OT13: MCP validation - workflow_load (hitl none)
+    - id: "validate_workflow_load"
+      name: "Validate workflow_load (MCP)"
+      role: "validator"
+      action: "validate"
+      params:
+        mcp_tool: "workflow_load"
+        workflow_engine_root: "node_modules/workflow-engine"
+        names: ["minimal-workflow", "phase-b-mcp-sprint-workflow"]
+        criteria: "Each loads with workflow.workflow.tasks array"
+      hitl:
+        type: "none"
+      on_complete: "next"
+
+    # OT13: MCP validation - workflow_get_active (hitl none)
+    - id: "validate_workflow_get_active"
+      name: "Validate workflow_get_active (MCP)"
+      role: "validator"
+      action: "validate"
+      params:
+        mcp_tool: "workflow_get_active"
+        project_root: "."
+        criteria: "Returns { active: null } or { active: true, ... }"
+      hitl:
+        type: "none"
+      on_complete: "next"
+
+    # HITL test: workflow_handle_hitl
+    - id: "validate_workflow_handle_hitl"
+      name: "Validate workflow_handle_hitl (HITL)"
+      role: "validator"
+      action: "validate"
+      params:
+        mcp_tool: "workflow_handle_hitl"
+        task_id: "hitl_test"
+        type: "approval"
+        message: "MCP workflow_handle_hitl validation: Approve to confirm HITL relay works?"
+      hitl:
+        type: "approval"
+        message: "MCP workflow_handle_hitl validation: Approve to confirm HITL relay works?"
+      on_complete: "complete"
+
+    # OT33, OT12: complete → info
+    - id: "complete"
+      name: "Workflow Complete"
+      role: "developer"
+      action: "complete"
+      hitl:
+        type: "info"
+        message: "Full orchestration MCP validation complete!"
+        auto_continue: true
+      on_complete: "end"

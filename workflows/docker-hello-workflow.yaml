@@ -1,0 +1,47 @@
+# Docker Hello Workflow
+# Demonstrates build_docker and run_container actions (Phase A)
+
+workflow:
+  name: "Docker Hello Workflow"
+  version: "1.0"
+
+  roles:
+    developer:
+      mode: "agent"
+      description: "Builds and runs Docker containers"
+
+  tasks:
+    - id: "build"
+      name: "Build Docker Image"
+      role: "developer"
+      action: "build_docker"
+      params:
+        context_path: "node_modules/workflow-engine/workflows/docker-hello"
+        tag: "docker-hello:latest"
+      hitl:
+        type: "approval"
+        message: "Image built. Approve to run container?"
+      on_complete: "next"
+
+    - id: "run"
+      name: "Run Container"
+      role: "developer"
+      action: "run_container"
+      params:
+        image: "docker-hello:latest"
+        rm: true
+      hitl:
+        type: "info"
+        message: "Container ran successfully. Check output above."
+        auto_continue: true
+      on_complete: "complete"
+
+    - id: "complete"
+      name: "Workflow Complete"
+      role: "developer"
+      action: "complete"
+      hitl:
+        type: "info"
+        message: "Docker orchestration demo complete!"
+        auto_continue: true
+      on_complete: "end"

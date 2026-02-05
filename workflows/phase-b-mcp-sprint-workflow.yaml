@@ -1,0 +1,148 @@
+# Phase B MCP Sprint Workflow
+# Walking skeleton methodology: piece → HITL validate → piece → HITL validate
+# Run: Execute workflows/phase-b-mcp-sprint-workflow.yaml
+# PRD: docs/sprints/PHASE-B-MCP-SPRINT-PRD.md
+
+workflow:
+  name: "Phase B MCP Sprint Workflow"
+  version: "1.0"
+
+  roles:
+    pm:
+      mode: "plan"
+      description: "Creates and validates PRD"
+    architect:
+      mode: "plan"
+      description: "Designs MCP server architecture"
+    developer:
+      mode: "agent"
+      description: "Implements MCP server pieces (walking skeleton)"
+    reviewer:
+      mode: "plan"
+      description: "Reviews code against PRD"
+    tester:
+      mode: "agent"
+      description: "Runs UAT"
+
+  tasks:
+    # Phase 1: PM — Create/Validate PRD
+    - id: "pm_create_prd"
+      name: "PM Create/Validate PRD"
+      role: "pm"
+      action: "review"
+      params:
+        file: "node_modules/workflow-engine/docs/sprints/PHASE-B-MCP-SPRINT-PRD.md"
+        ensure_exists: true
+      hitl:
+        type: "approval"
+        message: "PRD complete. Walking skeleton validated? Proceed to Architect?"
+      on_complete: "architect_design"
+
+    # Phase 2: Architect — Design MCP structure
+    - id: "architect_design"
+      name: "Architect Design MCP Structure"
+      role: "architect"
+      action: "review"
+      params:
+        file: "node_modules/workflow-engine/docs/sprints/PHASE-B-MCP-SPRINT-PRD.md"
+        output: "node_modules/workflow-engine/docs/design/MCP-SERVER-ARCHITECTURE.md"
+      hitl:
+        type: "approval"
+        message: "Design approved. Walking skeleton validated? Proceed to Developer Piece 1?"
+      on_complete: "dev_piece_1"
+
+    # Phase 3a: Developer — Piece 1 (package + tsconfig)
+    - id: "dev_piece_1"
+      name: "Developer Piece 1: package + tsconfig"
+      role: "developer"
+      action: "implement"
+      params:
+        prd_path: "node_modules/workflow-engine/docs/sprints/PHASE-B-MCP-SPRINT-PRD.md"
+        piece: 1
+        deliverable: "package.json, tsconfig.json, minimal src/"
+        validation: "npm install + npm run build succeeds"
+      hitl:
+        type: "approval"
+        message: "Package builds. Walking skeleton validated? Proceed to Piece 2?"
+      on_complete: "dev_piece_2"
+
+    # Phase 3b: Developer — Piece 2 (server.ts stdio)
+    - id: "dev_piece_2"
+      name: "Developer Piece 2: server.ts (stdio)"
+      role: "developer"
+      action: "implement"
+      params:
+        prd_path: "node_modules/workflow-engine/docs/sprints/PHASE-B-MCP-SPRINT-PRD.md"
+        piece: 2
+        deliverable: "server.ts with stdio transport, empty tools"
+        validation: "Server starts (no crash)"
+      hitl:
+        type: "approval"
+        message: "Server starts. Walking skeleton validated? Proceed to Piece 3?"
+      on_complete: "dev_piece_3"
+
+    # Phase 3c: Developer — Piece 3 (workflowManager + tools)
+    - id: "dev_piece_3"
+      name: "Developer Piece 3: workflowManager + tools"
+      role: "developer"
+      action: "implement"
+      params:
+        prd_path: "node_modules/workflow-engine/docs/sprints/PHASE-B-MCP-SPRINT-PRD.md"
+        piece: 3
+        deliverable: "workflowManager.ts + 4 tools"
+        validation: "Tools appear in Cursor, workflow_list returns data"
+      hitl:
+        type: "approval"
+        message: "Tools work. Walking skeleton validated? Proceed to Reviewer?"
+      on_complete: "reviewer_review"
+
+    # Phase 4: Reviewer
+    - id: "reviewer_review"
+      name: "Reviewer Review Code"
+      role: "reviewer"
+      action: "review"
+      params:
+        file: "node_modules/workflow-engine/mcp-server/"
+        prd: "node_modules/workflow-engine/docs/sprints/PHASE-B-MCP-SPRINT-PRD.md"
+      hitl:
+        type: "question"
+        message: "Review complete. Pass or fail?"
+        options: ["pass", "fail"]
+        on_fail: "dev_piece_3"
+      conditions:
+        - if: "result == 'pass'"
+          then: "tester_uat"
+        - if: "result == 'fail'"
+          then: "dev_piece_3"
+      on_complete: "tester_uat"
+
+    # Phase 5: Tester UAT
+    - id: "tester_uat"
+      name: "Tester UAT"
+      role: "tester"
+      action: "review"
+      params:
+        validation: "npm install, npm run build, server starts, tools listed"
+        config: "Cursor MCP config example"
+      hitl:
+        type: "question"
+        message: "UAT pass or fail?"
+        options: ["pass", "fail"]
+        on_fail: "dev_piece_3"
+      conditions:
+        - if: "result == 'pass'"
+          then: "complete"
+        - if: "result == 'fail'"
+          then: "dev_piece_3"
+      on_complete: "complete"
+
+    # Phase 6: Complete
+    - id: "complete"
+      name: "Phase B Sprint Complete"
+      role: "developer"
+      action: "complete"
+      hitl:
+        type: "info"
+        message: "✅ Phase B MCP Sprint complete. Run WALKING-SKELETON-TEST.md checklist."
+        auto_continue: true
+      on_complete: "end"

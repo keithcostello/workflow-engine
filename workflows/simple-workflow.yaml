@@ -1,0 +1,55 @@
+# Simple 3-Task Workflow Example
+# Demonstrates basic workflow with approval and question gates
+
+workflow:
+  name: "Simple Workflow Example"
+  version: "1.0"
+  
+  roles:
+    architect:
+      mode: "plan"
+      description: "Creates plans"
+    
+    developer:
+      mode: "agent"
+      description: "Implements code"
+  
+  tasks:
+    # Task 1: Create Plan
+    - id: "plan"
+      name: "Create Plan"
+      role: "architect"
+      action: "create_plan"
+      params:
+        output: "plan.md"
+      hitl:
+        type: "approval"
+        message: "Review the plan. Approve to continue?"
+      on_complete: "next"
+      on_error: "retry"
+    
+    # Task 2: Implement
+    - id: "implement"
+      name: "Implement Plan"
+      role: "developer"
+      action: "implement"
+      params:
+        plan_file: "plan.md"
+      hitl:
+        type: "question"
+        message: "Implementation complete. Does it look good?"
+        options: ["yes", "no"]
+        on_no: "implement"  # Retry if "no"
+      on_complete: "next"
+      on_error: "retry"
+    
+    # Task 3: Complete
+    - id: "complete"
+      name: "Workflow Complete"
+      role: "developer"
+      action: "complete"
+      hitl:
+        type: "info"
+        message: "Workflow completed successfully!"
+        auto_continue: true
+      on_complete: "end"

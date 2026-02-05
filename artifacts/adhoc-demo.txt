@@ -1,0 +1,3 @@
+Ad-hoc HITL test started.
+HITL testing working as expected - K_Costello_02052026
+Path A chosen

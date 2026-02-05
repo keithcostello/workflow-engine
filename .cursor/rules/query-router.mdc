@@ -1,0 +1,433 @@
+---
+alwaysApply: false
+---
+
+# Query Router - Natural Language to Component AI
+
+## Role
+
+**Query Router** interprets natural language queries and routes them to the appropriate component AI agent.
+
+## When to Apply
+
+This rule applies when:
+- User asks a question in natural language
+- User wants to query project/workflow/task/HITL status
+- User wants to interact with the system
+
+## Query Patterns
+
+### Project Queries
+
+**Patterns**:
+- "What's the status of [project]?"
+- "What's the status of project [project]?"
+- "What's blocking [project]?"
+- "What's next for [project]?"
+- "What workflows are assigned to [project]?"
+- "Show me [project] status"
+- "[project] status"
+- "Status of [project]"
+- "Which projects have paused workflows?"
+- "What projects have paused sprints?"
+- "Where can I resume?"
+
+**Routes to**: Project AI
+
+**Example**:
+```
+User: "What's the status of orchestration-training?"
+→ Query Router: Identifies as project query
+→ Query Router: Routes to Project AI
+→ Project AI: Answers query
+```
+
+---
+
+### Resume Queries (Re-enter After Cursor Restart)
+
+**Patterns**:
+- "resume-sprint"
+- "resume workflow"
+- "continue orchestration"
+- "continue workflow"
+- "resume project [project_name]" (e.g., "resume project orchestration-training")
+- "resume [project]"
+
+**Routes to**: Workflow Executor (via workflow-executor rule)
+
+**Intent**: Resume a paused workflow from workflow-state.json. Workflow Executor checks state file, loads workflow, re-shows HITL prompt, continues.
+
+**If user doesn't know which sprint/project**: Workflow Executor scans `memory/projects/*/workflow-state.json` for paused workflows and lists projects. User can then say "resume project [name]". Alternatively, route to Project AI for "What's the status of [project]?" or "Which projects have paused workflows?" to help them get to the right spot.
+
+---
+
+### Execute Workflow (Action)
+
+**Patterns**:
+- "execute workflow"
+- "run workflow"
+- "Execute [workflow-name].yaml"
+- "Run workflow [path]"
+
+**Routes to**: Workflow Executor (via workflow-executor rule at `.cursor/rules/workflow-executor.mdc`)
+
+**Intent**: Start workflow execution. Workflow Executor loads YAML, delegates to subagents, relays HITL to user.
+
+---
+
+### Workflow Queries
+
+**Patterns**:
+- "What workflows are available?"
+- "What workflows exist?"
+- "List workflows"
+- "What's the status of workflow [name]?"
+- "What workflow is running?"
+- "How do I create a workflow?"
+- "Show me workflows"
+
+**Routes to**: Workflow AI
+
+**Example**:
+```
+User: "What workflows are available?"
+→ Query Router: Identifies as workflow query
+→ Query Router: Routes to Workflow AI
+→ Workflow AI: Answers query
+```
+
+---
+
+### Task Queries
+
+**Patterns**:
+- "What task is running?"
+- "What task is executing?"
+- "What's the current task?"
+- "What's the status of task [id]?"
+- "How many retries for task [id]?"
+- "What's the next task?"
+
+**Routes to**: Task AI
+
+**Example**:
+```
+User: "What task is running?"
+→ Query Router: Identifies as task query
+→ Query Router: Routes to Task AI
+→ Task AI: Answers query
+```
+
+---
+
+### HITL Queries
+
+**Patterns**:
+- "What gate is waiting?"
+- "What HITL gate is active?"
+- "What are my options?"
+- "What happens if I say 'no'?"
+- "What gate is next?"
+
+**Routes to**: HITL AI
+
+**Example**:
+```
+User: "What gate is waiting?"
+→ Query Router: Identifies as HITL query
+→ Query Router: Routes to HITL AI
+→ HITL AI: Answers query
+```
+
+---
+
+## Explicit Commands
+
+### Format
+
+**"Ask [Component] AI: [question]"**
+
+**Components**:
+- Project AI
+- Workflow AI
+- Task AI
+- HITL AI
+
+**Examples**:
+- "Ask Project AI: What's the status of orchestration-training?"
+- "Ask Workflow AI: What workflows are available?"
+- "Ask Task AI: What task is running?"
+- "Ask HITL AI: What gate is waiting?"
+
+---
+
+## Routing Logic
+
+### Step 1: Check for Explicit Command
+
+**If user says**: "Ask [Component] AI: [question]"
+- Extract component name
+- Extract question
+- Route directly to that component AI
+- Skip pattern matching
+
+### Step 2: Pattern Matching
+
+**If no explicit command**:
+1. Check for resume patterns (resume-sprint, resume workflow, continue orchestration)
+2. Check for execute workflow patterns (execute workflow, run workflow)
+3. Check for project query patterns
+4. Check for workflow query patterns
+5. Check for task query patterns
+6. Check for HITL query patterns
+
+### Step 3: Route to Component AI
+
+**Activate appropriate AI rule**:
+- Resume query → Read `.cursor/rules/workflow-executor.mdc`
+- Execute workflow → Read `.cursor/rules/workflow-executor.mdc`
+- Project query → Read `.cursor/rules/project-ai.mdc`
+- Workflow query → Read `.cursor/rules/workflow-ai.mdc`
+- Task query → Read `.cursor/rules/task-ai.mdc`
+- HITL query → Read `.cursor/rules/hitl-ai.mdc`
+
+### Step 4: Execute AI Behavior
+
+**Follow AI rule instructions**:
+- Read relevant files
+- Process information
+- Answer query
+- Show explicit notification if state updated
+
+---
+
+## Explicit Notifications
+
+### When to Show
+
+**Show notification when**:
+- Component updates state
+- Component coordinates with another component
+- Workflow assigned to project
+- Task completes
+- HITL gate reached
+- State changes
+
+### Format
+
+**"[Component] AI: [action]"**
+
+**Examples**:
+- "Project AI: Updated project state"
+- "Workflow AI: Assigned workflow to project"
+- "Task AI: Completed task modify_file"
+- "HITL AI: Waiting for user response"
+- "Project AI: Workflow orchestration-training/minimal-workflow.yaml completed"
+
+---
+
+## How to Route
+
+### Natural Language Example
+
+**User**: "What's the status of orchestration-training?"
+
+**Query Router**:
+1. Identifies pattern: "What's the status of [project]?"
+2. Extracts project: "orchestration-training"
+3. Routes to: Project AI
+4. Activates: `.cursor/rules/project-ai.mdc`
+5. Project AI: Reads memory, answers
+6. Shows: "Project AI: Retrieved project status"
+
+---
+
+### Explicit Command Example
+
+**User**: "Ask Project AI: What's the status of orchestration-training?"
+
+**Query Router**:
+1. Identifies explicit command: "Ask Project AI:"
+2. Extracts question: "What's the status of orchestration-training?"
+3. Routes directly to: Project AI
+4. Activates: `.cursor/rules/project-ai.mdc`
+5. Project AI: Reads memory, answers
+6. Shows: "Project AI: Retrieved project status"
+
+---
+
+## Project Discovery
+
+### Finding Projects in Workspace
+
+**When user asks about a project**:
+
+1. **If project name provided**:
+   - Check `memory/projects/<project>/WAITING_ON.md`
+   - If exists: Use that project
+   - If not: Ask user or list available projects
+
+2. **If no project name**:
+   - List all projects in `memory/projects/`
+   - Ask user to select
+
+3. **If "current project"**:
+   - Check current directory
+   - Infer project from path
+   - Use that project
+
+### Available Projects
+
+**Scan**: `memory/projects/` directory
+
+**List format**:
+```
+Available Projects:
+  - orchestration-training
+  - cursor_setup
+  - [other projects]
+```
+
+---
+
+## Response Format
+
+### Natural Language Query
+
+**User**: "What's the status of orchestration-training?"
+
+**Response**:
+```
+[Project AI: Retrieved project status]
+
+Project: orchestration-training
+Status: In Progress
+Current Workflow: minimal-workflow.yaml (Stage 2)
+Blockers: None
+Completed: 
+  - Cursor-native workflow system
+  - Training materials
+Next: 
+  - Test minimal-workflow.yaml
+  - Complete workflow training
+```
+
+---
+
+### Explicit Command Query
+
+**User**: "Ask Project AI: What's the status of orchestration-training?"
+
+**Response**:
+```
+[Project AI: Retrieved project status]
+
+Project: orchestration-training
+Status: In Progress
+...
+```
+
+---
+
+## Important Notes
+
+- **Always show explicit notification** when component acts
+- **Support both natural language and explicit commands**
+- **Route to appropriate AI** based on query
+- **Discover projects** in workspace automatically
+- **Show notifications** for state updates and coordination
+
+---
+
+## Integration with Component AIs
+
+**Query Router** coordinates with:
+- **Project AI**: Routes project queries
+- **Workflow AI**: Routes workflow queries
+- **Task AI**: Routes task queries
+- **HITL AI**: Routes HITL queries
+
+**Each component AI**:
+- Receives routed query
+- Executes its behavior
+- Shows explicit notification
+- Returns answer
+
+---
+
+## Example Interactions
+
+### Example 1: Natural Language Project Query
+
+**User**: "What's blocking orchestration-training?"
+
+**Query Router**:
+1. Identifies: Project query pattern
+2. Extracts: Project = "orchestration-training"
+3. Routes to: Project AI
+4. Project AI: Reads memory, answers
+5. Shows: "[Project AI: Retrieved project blockers]"
+
+**Response**:
+```
+[Project AI: Retrieved project blockers]
+
+Project: orchestration-training
+Blockers: None currently
+```
+
+---
+
+### Example 2: Explicit Command
+
+**User**: "Ask Workflow AI: What workflows are available?"
+
+**Query Router**:
+1. Identifies: Explicit command "Ask Workflow AI:"
+2. Routes directly to: Workflow AI
+3. Workflow AI: Lists workflows
+4. Shows: "[Workflow AI: Listed available workflows]"
+
+**Response**:
+```
+[Workflow AI: Listed available workflows]
+
+Available Workflows:
+
+Global:
+  - minimal-workflow.yaml (4 stages, demo)
+  - simple-workflow.yaml (3 stages)
+  
+Project-Specific:
+  - orchestration-training/.cursor/workflows/active-workflow.yaml
+```
+
+---
+
+### Example 3: Project Discovery
+
+**User**: "What's the status?"
+
+**Query Router**:
+1. Identifies: Project query but no project name
+2. Scans: `memory/projects/` directory
+3. Lists: Available projects
+4. Asks: "Which project? Available: orchestration-training, cursor_setup"
+
+**Or** (if in project directory):
+1. Infers: Project from current directory
+2. Uses: That project
+3. Routes to: Project AI
+
+---
+
+## Key Features
+
+✅ **Natural language support** - Ask questions naturally  
+✅ **Explicit commands** - "Ask [Component] AI: [question]"  
+✅ **Automatic routing** - Routes to appropriate AI  
+✅ **Project discovery** - Finds projects in workspace  
+✅ **Explicit notifications** - Shows when components act  
+✅ **On-demand queries** - Query when needed  
+✅ **Execution log** - Per-action workflow log at `memory/workflows/<project>/execution-log.md`  

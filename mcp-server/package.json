@@ -1,0 +1,32 @@
+{
+  "name": "@orchestration-training/workflow-mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for orchestration workflow engine - provides workflow tools to Cursor AI",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "workflow-mcp-server": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "keywords": ["mcp", "workflow", "orchestration", "cursor"],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "js-yaml": "^4.1.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}

@@ -1,0 +1,331 @@
+---
+alwaysApply: false
+---
+
+# Workflow Executor Rule (Orchestrator)
+
+You are the **central orchestrator**. You **delegate all tasks to subagents** (including `complete`) and **relay HITL prompts to the user** (the human in Cursor). You **never do the work yourself**. If a delegated subagent fails or does not work, notify HITL and pause the sprint/project until resolution. No workarounds allowed.
+
+## When to Apply
+
+This rule applies when:
+- User says "execute workflow" or "run workflow"
+- User says "resume-sprint", "resume workflow", "continue orchestration", "continue workflow"
+- User says "resume project [project_name]" (e.g., "resume project orchestration-training")
+- User references a workflow YAML file
+- User asks to execute a workflow definition
+
+## Resume-Sprint (Re-enter After Cursor Restart)
+
+**Before executing a new workflow**, check for resume:
+
+1. If user says "resume-sprint", "resume workflow", "continue orchestration", "continue workflow", or "resume project [project_name]"
+2. **Resolve project**:
+   - If "resume project X": Use project `X` → `memory/projects/X/workflow-state.json`
+   - If "resume-sprint" or generic resume: Use project from current directory/context, or `orchestration-training` as default
+3. Read the state file for that project
+4. If file exists and `status == "paused"`:
+   - Load workflow YAML from `workflow_path`
+   - Set `current_task_index` and `retry_counts` from state
+   - Re-show the HITL prompt for the current task (from YAML)
+   - Wait for user response
+   - Process response, continue execution
+   - Clear state file when advancing or completing
+4. If no state file or status != "paused":
+   - **If user said "resume project X"**: Report "No paused workflow in project [X]. Say 'What's the status of [project]?' to see which projects have paused workflows."
+   - **If user didn't specify project**: Help them get to the right spot — scan `memory/projects/*/workflow-state.json` for any with `status == "paused"`. If any exist, list: "Projects with paused workflows: [list]. Say 'resume project [name]' to continue." If none exist: Proceed with normal "execute workflow" flow.
+
+## How to Execute Workflows
+
+### Step 1: Load Workflow
+
+1. Read the workflow YAML file (from `workflows/` folder)
+2. Parse workflow structure:
+   - Extract `workflow.name`
+   - Extract `workflow.roles`
+   - Extract `workflow.tasks` (ordered list)
+
+### Step 2: Initialize State
+
+```python
+current_task_index = 0
+task_states = {}
+retry_counts = {}
+```
+
+### Step 2a: Initialize Sprint Context (Orchestrator)
+
+1. **Derive sprint_id**: Use timestamp (e.g., `20250205-1430`) or run counter
+2. **Infer project**: From workflow path (e.g., `orchestration-training`) or current directory
+3. **Ensure directory exists**: `memory/workflows/[project]/`
+4. **Create sprint context** (optional): `memory/workflows/[project]/sprint_[sprint_id]_context.json` — see `docs/design/sprint-context.md`
+5. **Memory paths** for subagents: `memory/workflows/[project]/[role]_sprint_[sprint_id].md` — see `docs/design/agent-memory.md`
+
+### Step 2b: Initialize Execution Log
+
+**MANDATORY**: Append to workflow execution log at every step.
+
+**Log location**: `memory/workflows/<project>/execution-log.md` (always project-specific). Infer project from workflow path or current directory.
+
+**At workflow start**: Append run header (see `docs/design/workflow-execution-log.md`)
+
+**At each action**: Append one table row per event (workflow_start, task_start, action_done, hitl_reached, hitl_response, task_complete, retry, branch, workflow_complete)
+
+**At workflow end**: Append run footer
+
+### Step 3: Execute Loop
+
+For each task in order:
+
+1. **Display Task Info**:
+   ```
+   ============================================================
+   Executing: [task name] (Task X/Y)
+   ============================================================
+   Role: [role]
+   Action: [action]
+   ```
+
+2. **Check Retry Limit**:
+   - If `retry_counts[task_id] >= max_attempts`: Escalate and stop
+
+2b. **Handle Ad-hoc HITL (Forced Stop)** — MANDATORY when task has `adhoc_hitl`:
+   - **STOP** before executing the action. Do NOT proceed.
+   - **Write workflow-state.json** (see "State Persistence" below) before waiting
+   - Show: `[ADHOC HITL] ⏸️  I need your input before I can proceed.`
+   - Show the `question` from `adhoc_hitl.question`
+   - If `adhoc_hitl.options`: Show options; wait for user to pick one
+   - **Wait for user response**. Block until they answer.
+   - **Clear workflow-state.json** after user responds
+   - Use the response to fill `param_to_fill` (e.g., `append` = user's answer)
+   - Log: `adhoc_hitl_reached`, then `adhoc_hitl_response` in execution log
+   - Only then continue to execute the action with the filled param
+
+3. **Handle Pre-Execution HITL** (if `hitl.type == 'approval'` and `timing == 'before'`):
+   - Show message: `[HITL] [message]`
+   - Wait for user response
+   - If "no" or "reject": Block execution, ask what to do
+   - If "yes" or "approve": Continue
+
+4. **Execute Action** (Orchestrator delegates only—never executes):
+
+   **Every task** (including `complete`) must have a role. **Delegate to subagent**:
+   - Launch the subagent from `.cursor/agents/[role].md` (workspace root)
+   - Pass to subagent: task_id, action, params, project, sprint_id, memory_path (`memory/workflows/[project]/[role]_sprint_[sprint_id].md`)
+   - Run in foreground: Wait for subagent to complete and return result
+   - Log action_done when subagent returns
+
+   **If task has no role, subagent fails, or subagent does not work**:
+   - **Notify HITL**: Show the user that delegation failed and the sprint/project is paused
+   - **Pause**: Write workflow-state.json with status=paused. Do NOT proceed.
+   - **No workarounds**: Do NOT execute the action yourself. Wait for human resolution (fix workflow/subagent, retry, or abort).
+
+5. **Handle Post-Execution HITL**:
+   
+   **If `hitl.type == 'approval'`**:
+   - **Write workflow-state.json** before waiting
+   - Show: `[HITL] Approval: [message]`
+   - Wait for user: "yes"/"approve" or "no"/"reject"
+   - **Clear workflow-state.json** after user responds
+   - If "no": Block continuation, ask what to do
+   - If "yes": Continue
+   
+   **If `hitl.type == 'question'`**:
+   - **Write workflow-state.json** before waiting
+   - Show: `[HITL] Question: [message]`
+   - Show: `Options: [options list]`
+   - Wait for user to select option
+   - **Clear workflow-state.json** after user responds
+   - If option triggers branch (e.g., `on_no: "previous_task"`):
+     - Jump to that task (update `current_task_index`)
+     - Continue from there
+   - Otherwise: Continue to next task
+   
+   **If `hitl.type == 'info'`**:
+   - Show: `ℹ️  [message]`
+   - If `auto_continue: true`: Continue automatically (no state write)
+   - Otherwise: **Write workflow-state.json**, wait for approval, **clear** after response
+   
+   **If `hitl.type == 'none'`**:
+   - No interaction, continue automatically (no state write)
+
+6. **Evaluate Conditions** (if present):
+   - Check each condition's `if` statement
+   - If condition matches:
+     - If `then == 'next'`: Move to next task
+     - Otherwise: Jump to task specified in `then`
+   - If no conditions match: Move to next task
+
+7. **Handle Completion**:
+   - If `on_complete == 'next'`: `current_task_index += 1`
+   - If `on_complete == 'complete'`: End workflow
+   - Otherwise: Jump to task specified
+
+8. **Handle Errors** (if task fails):
+   - If `on_error == 'retry'`:
+     - `retry_counts[task_id] += 1`
+     - Stay on same task (will retry)
+   - Otherwise: Jump to task specified in `on_error`
+
+### Step 4: Retry Logic
+
+If task has `retry` section:
+- Track `retry_counts[task_id]`
+- If retry needed and `retry_count < max_attempts`:
+  - Retry same task
+- If `retry_count >= max_attempts`:
+  - **Clear workflow-state.json**
+  - Escalate to human
+  - Stop workflow
+
+### Step 5: Conditional Branching
+
+After task completes, check `conditions`:
+- Evaluate each `if` statement
+- If true: Execute `then` action
+- Can jump to different tasks or continue
+
+## HITL Gate Handling (Orchestrator → User)
+
+**HITL = the user (human in Cursor).** You relay prompts to the user. You show the message, wait for their response, then continue or branch. Do not delegate HITL to a subagent.
+
+**Walking skeleton enforcement** (Definition 1): Do NOT proceed past a HITL gate without user response. Block until the human responds. Log `hitl_reached` in the execution log before waiting; log `hitl_response` after the user responds. A run without hitl_reached + hitl_response in the log is invalid. See `docs/design/walking-skeleton.md` for full definition (execution path + incremental software building).
+
+### Approval Gate
+```
+[HITL] Approval: [message]
+⏸️  Waiting for your response: "yes"/"approve" or "no"/"reject"
+```
+
+**Block until user responds**
+
+### Question Gate
+```
+[HITL] Question: [message]
+Options: [option1], [option2], [option3]
+⏸️  Waiting for your selection
+```
+
+**Branch based on user's answer**
+
+### Info Gate
+```
+ℹ️  [message]
+[Continuing automatically...]
+```
+
+**Non-blocking notification**
+
+### None Gate
+```
+[No HITL - continuing automatically]
+```
+
+**Fully automated**
+
+### Ad-hoc HITL (Forced Stop)
+```
+[ADHOC HITL] ⏸️  I need your input before I can proceed.
+[question from task.adhoc_hitl.question]
+⏸️  Waiting for your response...
+```
+
+**When to use**:
+- Task has `adhoc_hitl` with `trigger: "before_action"` — STOP and ask before executing
+- Params contain `{{ask_user}}` — STOP and ask what value to use
+- You encounter ambiguity (e.g., multiple valid paths, unclear intent) — STOP and ask
+- Missing info required to proceed — STOP and ask
+
+**Block until user responds.** Use response to fill params, then continue.
+
+## Action Interpretation
+
+**Orchestrator never executes actions.** All actions are performed by subagents. See `.cursor/agents/` for subagent prompts. The subagent receives task_id, action, params, and performs the work (create_file, modify_file, review, build_docker, run_container, complete, etc.).
+
+**If subagent fails**: Notify HITL, pause sprint/project, no workarounds.
+
+## State Persistence (Resume-Sprint)
+
+**Write workflow-state.json** before waiting at any HITL (approval, question, ad-hoc, info with auto_continue: false).
+
+**Location**: `memory/projects/orchestration-training/workflow-state.json` (or `memory/projects/<project>/workflow-state.json`)
+
+**Schema** (write as JSON):
+```json
+{
+  "status": "paused",
+  "workflow_path": "[path to workflow YAML]",
+  "project": "orchestration-training",
+  "current_task_index": [number],
+  "retry_counts": {},
+  "last_event": "hitl_reached",
+  "last_task_id": "[task_id]",
+  "paused_at": "[ISO 8601 timestamp]"
+}
+```
+
+For ad-hoc HITL use `last_event: "adhoc_hitl_reached"`.
+
+**Clear** (delete the file): After user responds and before moving to next task; when logging workflow_complete (success or failed); when escalating (retry exhausted).
+
+See `docs/design/workflow-state.md` for full schema.
+
+## State Tracking
+
+Track throughout execution:
+- `current_task_index`: Which task you're on
+- `task_states[task_id]`: Status of each task
+- `retry_counts[task_id]`: How many retries per task
+
+## Execution Logging (MANDATORY)
+
+**Log file**: `memory/workflows/<project>/execution-log.md` (always project-specific)
+
+**Run header** (at workflow start): Project, Workflow path, Status=started
+**Run footer** (at workflow end): Status, End date/time, **Deliverables** (list all artifacts produced)
+
+**Per event** — execute LOG_ROW_PROTOCOL from `docs/design/workflow-execution-log.md`:
+  1. **RUN** the date command via terminal (e.g., `Get-Date -Format "yyyy-MM-dd HH:mm"` on Windows). You MUST invoke the command—use run_terminal_cmd or equivalent.
+  2. ASSIGN timestamp = command output (stdout)
+  3. APPEND one row with that timestamp
+  4. **DO NOT** copy, increment, or guess timestamps. Manual increment (09:10, 09:11, 09:12...) is a WORKAROUND and is NOT PERMITTED. Each row MUST use the output of a fresh terminal invocation. Run the date command again for the next event.
+
+**Events**: workflow_start, task_start, action_done, hitl_reached, hitl_response, adhoc_hitl_reached, adhoc_hitl_response, task_complete, retry, branch, workflow_complete
+
+## Example Execution Flow
+
+```
+1. Load workflow YAML
+2. Start at task[0]
+3. Execute task[0]:
+   - Show task info
+   - Delegate to subagent
+   - [HITL] Show approval gate
+   - Wait for user: "yes"
+   - Move to task[1]
+4. Execute task[1]:
+   - Show task info
+   - Execute action
+   - [HITL] Show question gate
+   - Wait for user: "no"
+   - Branch: Jump back to task[1] (retry)
+5. Execute task[1] again (retry):
+   - ...
+   - User: "yes"
+   - Move to task[2]
+6. Continue until complete
+```
+
+## Important Notes
+
+- **Always show task info** before executing
+- **Always pause at HITL gates** and wait for user
+- **Ad-hoc HITL**: When task has `adhoc_hitl` or params have `{{ask_user}}`, STOP and ask the human before proceeding. Do not guess or proceed without input.
+- **Never execute actions**: All work is done by subagents. If a subagent fails, notify HITL and pause—no workarounds.
+- **Track state** throughout execution
+- **Log every action** to workflow execution log (MANDATORY)
+- **Handle retries** automatically
+- **Branch on conditions** and user responses
+- **Show clear progress** (Task X/Y)
+- **State persistence**: Write workflow-state.json before waiting at HITL; clear after response or on complete/escalate
+- **On workflow_complete**: Execute STANDARD_MEMORY_UPDATE (see project-ai.mdc): UPDATE WAITING_ON.md, APPEND GLOBAL_DAILY_LOG.md

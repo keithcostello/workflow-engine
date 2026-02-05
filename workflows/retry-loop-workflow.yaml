@@ -1,0 +1,68 @@
+# Retry Loop Workflow Example
+# Demonstrates automatic retry with validation loop
+
+workflow:
+  name: "Retry Loop Example"
+  version: "1.0"
+  
+  roles:
+    developer:
+      mode: "agent"
+      description: "Implements and fixes code"
+    
+    validator:
+      mode: "plan"
+      description: "Validates work"
+  
+  tasks:
+    # Task 1: Implement
+    - id: "implement"
+      name: "Implement Feature"
+      role: "developer"
+      action: "implement"
+      hitl:
+        type: "none"  # Fully automated
+      on_complete: "next"
+      on_error: "retry"
+    
+    # Task 2: Validate
+    - id: "validate"
+      name: "Validate Implementation"
+      role: "validator"
+      action: "validate"
+      hitl:
+        type: "question"
+        message: "Does the implementation meet requirements?"
+        options: ["yes", "no"]
+      conditions:
+        - if: "result == 'pass'"
+          then: "complete"
+        - if: "result == 'fail'"
+          then: "fix"
+    
+    # Task 3: Fix (Retry Loop)
+    - id: "fix"
+      name: "Fix Issues"
+      role: "developer"
+      action: "fix"
+      retry:
+        max_attempts: 3
+        current_attempt: 0
+        on_max_retries: "escalate"
+      conditions:
+        - if: "retry_count < 3"
+          then: "validate"  # Loop back to validation
+        - if: "retry_count >= 3"
+          then: "escalate"
+      on_error: "retry"
+    
+    # Task 4: Complete
+    - id: "complete"
+      name: "Workflow Complete"
+      role: "developer"
+      action: "complete"
+      hitl:
+        type: "info"
+        message: "All validations passed. Workflow complete!"
+        auto_continue: true
+      on_complete: "end"

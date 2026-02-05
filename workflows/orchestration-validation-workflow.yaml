@@ -1,0 +1,78 @@
+# Orchestration Validation Workflow
+# Exercises all orchestration tool features in one run for end-of-sprint validation
+# Use: Execute this workflow, respond at each gate. Optionally pause at approval gate to test resume.
+
+workflow:
+  name: "Orchestration Validation Workflow"
+  version: "1.0"
+
+  roles:
+    developer:
+      mode: "agent"
+      description: "Implements code"
+    reviewer:
+      mode: "plan"
+      description: "Reviews work"
+
+  tasks:
+    # Stage 1: create_file → approval (OT10, OT28)
+    - id: "create_file"
+      name: "Create Validation File"
+      role: "developer"
+      action: "create_file"
+      params:
+        path: "node_modules/workflow-engine/artifacts/validation-demo.txt"
+        content: "Orchestration validation run."
+      hitl:
+        type: "approval"
+        message: "File created. Approve to continue? (Pause here to test resume-sprint.)"
+      on_complete: "next"
+
+    # Stage 2: modify_file with adhoc_hitl → question (OT11, OT14, OT29)
+    - id: "modify_with_adhoc"
+      name: "Modify (Ad-hoc HITL)"
+      role: "developer"
+      action: "modify_file"
+      params:
+        path: "node_modules/workflow-engine/artifacts/validation-demo.txt"
+        append: "{{ask_user}}"
+      adhoc_hitl:
+        trigger: "before_action"
+        question: "What content should I append? (Ad-hoc HITL - I must ask before proceeding.)"
+        param_to_fill: "append"
+      hitl:
+        type: "question"
+        message: "Modification done. Continue?"
+        options: ["yes", "no"]
+        on_no: "modify_with_adhoc"
+      on_complete: "next"
+
+    # Stage 3: review → question with on_fail (OT7, OT21, OT30)
+    - id: "review"
+      name: "Review Work"
+      role: "reviewer"
+      action: "review"
+      params:
+        file: "node_modules/workflow-engine/artifacts/validation-demo.txt"
+      hitl:
+        type: "question"
+        message: "Review complete. Pass or fail?"
+        options: ["pass", "fail"]
+        on_fail: "modify_with_adhoc"
+      conditions:
+        - if: "result == 'pass'"
+          then: "complete"
+        - if: "result == 'fail'"
+          then: "modify_with_adhoc"
+      on_complete: "complete"
+
+    # Stage 4: complete → info auto_continue (OT12, OT33)
+    - id: "complete"
+      name: "Workflow Complete"
+      role: "developer"
+      action: "complete"
+      hitl:
+        type: "info"
+        message: "Orchestration validation workflow complete!"
+        auto_continue: true
+      on_complete: "end"

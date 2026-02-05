@@ -1,0 +1,248 @@
+# Workflow Definition Format
+# Simple, declarative task-based orchestration
+
+workflow:
+  name: "PM-Developer Orchestration"
+  version: "1.0"
+  
+  # Global settings
+  settings:
+    max_retries: 3
+    default_role: "developer"
+    
+  # Role definitions
+  roles:
+    architect:
+      mode: "plan"
+      description: "Creates plans and PRDs"
+    
+    pm:
+      mode: "plan"
+      description: "Validates and manages sprints"
+    
+    developer:
+      mode: "agent"
+      description: "Implements code"
+    
+    tester:
+      mode: "agent"
+      description: "Runs tests"
+    
+    reviewer:
+      mode: "plan"
+      description: "Reviews work against PRD"
+
+  # Task definitions
+  tasks:
+    # Task 1: Create Project
+    - id: "create_project"
+      name: "Create Project Structure"
+      role: "architect"
+      action: "create_project"
+      params:
+        project_name: "orchestration-training"
+        structure:
+          - "src/"
+          - "docs/"
+          - "tests/"
+      hitl:
+        type: "approval"  # approval | question | none
+        message: "Review project structure. Approve to continue?"
+      on_complete: "next"
+      on_error: "retry"
+    
+    # Task 2: Create PRD
+    - id: "create_prd"
+      name: "Create Master PRD"
+      role: "architect"
+      action: "create_prd"
+      params:
+        prd_path: "PRD.md"
+        requirements:
+          - "Complete file list with full paths"
+          - "Test scripts BEFORE software design"
+          - "Dependencies and requirements"
+      hitl:
+        type: "approval"
+        message: "Review PRD. Approve to continue?"
+      on_complete: "next"
+      on_error: "retry"
+    
+    # Task 3: PM Validates PRD
+    - id: "pm_validate_prd"
+      name: "PM Validates PRD"
+      role: "pm"
+      action: "validate_prd"
+      params:
+        prd_path: "PRD.md"
+        criteria:
+          - "All required elements present"
+          - "No scope ambiguity"
+          - "Test scripts specified"
+      hitl:
+        type: "question"
+        message: "Does the PRD meet all quality criteria?"
+        options: ["yes", "no"]
+        on_no: "create_prd"  # Loop back if validation fails
+      on_complete: "next"
+      on_error: "retry"
+    
+    # Task 4: Create Sub-Sprints
+    - id: "create_sub_sprints"
+      name: "PM Creates Sub-Sprint PRDs"
+      role: "pm"
+      action: "create_sub_sprints"
+      params:
+        master_prd: "PRD.md"
+        output_dir: "docs/"
+      hitl:
+        type: "approval"
+        message: "Review sub-sprint PRDs. Approve to continue?"
+      on_complete: "next"
+      on_error: "retry"
+    
+    # Task 5: Developer Confirms Understanding
+    - id: "dev_confirm_understanding"
+      name: "Developer Confirms Understanding"
+      role: "developer"
+      action: "confirm_understanding"
+      params:
+        sprint_prd: "docs/SPRINT-1-PRD.md"
+        output: "docs/SPRINT-1-DEVELOPER-UNDERSTANDING.md"
+      hitl:
+        type: "question"
+        message: "Does developer understanding look correct?"
+        options: ["yes", "no"]
+        on_no: "dev_confirm_understanding"  # Retry same task
+      on_complete: "next"
+      on_error: "retry"
+    
+    # Task 6: PM Validates Developer Understanding
+    - id: "pm_validate_dev"
+      name: "PM Validates Developer Understanding"
+      role: "pm"
+      action: "validate_understanding"
+      params:
+        understanding_doc: "docs/SPRINT-1-DEVELOPER-UNDERSTANDING.md"
+        sprint_prd: "docs/SPRINT-1-PRD.md"
+        output: "docs/SPRINT-1-PM-VALIDATION.md"
+      conditions:
+        - if: "validation_result == 'pass'"
+          then: "next"
+        - if: "validation_result == 'fail'"
+          then: "dev_confirm_understanding"  # Loop back
+      on_error: "retry"
+    
+    # Task 7: Developer Implements
+    - id: "dev_implement"
+      name: "Developer Implements Sprint"
+      role: "developer"
+      action: "implement_sprint"
+      params:
+        sprint_prd: "docs/SPRINT-1-PRD.md"
+      hitl:
+        type: "approval"
+        message: "Review implementation. Approve to continue?"
+      on_complete: "next"
+      on_error: "retry"
+    
+    # Task 8: PM Validates Work (with intentional failure for training)
+    - id: "pm_validate_work"
+      name: "PM Validates Work"
+      role: "pm"
+      action: "validate_work"
+      params:
+        sprint_prd: "docs/SPRINT-1-PRD.md"
+        output: "docs/SPRINT-1-PM-WORK-VALIDATION.md"
+        intentional_failure: true  # For training
+      conditions:
+        - if: "validation_result == 'pass'"
+          then: "run_tests"
+        - if: "validation_result == 'fail'"
+          then: "dev_fix_work"  # Enter retry loop
+      on_error: "retry"
+    
+    # Task 9: Developer Fixes Work (Retry Loop)
+    - id: "dev_fix_work"
+      name: "Developer Fixes Issues"
+      role: "developer"
+      action: "fix_work"
+      params:
+        pm_feedback: "docs/SPRINT-1-PM-WORK-VALIDATION.md"
+      retry:
+        max_attempts: 3
+        current_attempt: 0
+        on_max_retries: "escalate"  # Escalate to human
+      conditions:
+        - if: "retry_count < 3"
+          then: "pm_validate_work"  # Loop back to validation
+        - if: "retry_count >= 3"
+          then: "escalate"
+      on_error: "retry"
+    
+    # Task 10: Run Tests
+    - id: "run_tests"
+      name: "Run Test Suite"
+      role: "tester"
+      action: "run_tests"
+      params:
+        test_dir: "tests/"
+      hitl:
+        type: "question"
+        message: "Do all tests pass (or fail as expected in TDD)?"
+        options: ["yes", "no"]
+        on_no: "dev_fix_work"  # Loop back if tests fail
+      on_complete: "next"
+      on_error: "retry"
+    
+    # Task 11: Reviewer Phase
+    - id: "reviewer_phase"
+      name: "Review Diff Against PRD"
+      role: "reviewer"
+      action: "review_diff"
+      params:
+        prd: "docs/SPRINT-1-PRD.md"
+        output: "docs/REVIEWER-PHASE-REPORT.md"
+      conditions:
+        - if: "scope_deviation == false"
+          then: "next"
+        - if: "scope_deviation == true"
+          then: "escalate"  # Hard stop on scope deviation
+      on_error: "retry"
+    
+    # Task 12: Verification Checklist
+    - id: "verification"
+      name: "Verification Checklist"
+      role: "reviewer"
+      action: "verification_checklist"
+      params:
+        output: "docs/VERIFICATION-CHECKLIST.md"
+      hitl:
+        type: "approval"
+        message: "Verification complete. Approve to finish?"
+      on_complete: "complete"
+      on_error: "retry"
+
+  # Communication templates
+  communications:
+    approval:
+      template: "Review {task_name}. Approve to continue?"
+      required: true
+      timeout: null  # null = no timeout
+    
+    question:
+      template: "{message}"
+      required: true
+      options: []  # Defined per task
+    
+    info:
+      template: "{message}"
+      required: false
+      auto_continue: true
+
+  # Error handling
+  error_handling:
+    on_error: "retry"
+    max_retries: 3
+    on_max_retries: "escalate"
+    escalation_message: "Workflow error: Max retries reached. Human intervention required."

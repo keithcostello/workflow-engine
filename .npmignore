@@ -1,0 +1,10 @@
+# Exclude from npm package (postinstall creates these)
+mcp-server/node_modules/
+mcp-server/dist/
+
+# Dev/test artifacts
+memory/
+*.log
+.pytest_cache/
+.coverage
+htmlcov/

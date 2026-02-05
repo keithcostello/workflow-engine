@@ -1,0 +1,32 @@
+{
+  "name": "workflow-engine",
+  "version": "0.1.0",
+  "description": "Workflow orchestration for Cursor AI - MCP tools, YAML workflows, HITL gates",
+  "type": "module",
+  "main": "mcp-server/dist/index.js",
+  "bin": {
+    "workflow-mcp-server": "./mcp-server/dist/index.js"
+  },
+  "scripts": {
+    "postinstall": "cd mcp-server && npm install && npm run build",
+    "build": "cd mcp-server && npm run build"
+  },
+  "keywords": ["mcp", "workflow", "orchestration", "cursor"],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/keithcostello/workflow-engine"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "mcp-server",
+    "workflows",
+    ".cursor",
+    "artifacts",
+    "src",
+    "docs"
+  ]
+}

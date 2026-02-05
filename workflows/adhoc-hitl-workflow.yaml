@@ -1,0 +1,71 @@
+# Ad-hoc HITL Workflow
+# Tests forced ad-hoc HITL: AI must STOP and ASK the human before proceeding
+# (Not a scheduled gate - AI interrupts sprint to get human input)
+
+workflow:
+  name: "Ad-hoc HITL Test Workflow"
+  version: "1.0"
+  
+  roles:
+    developer:
+      mode: "agent"
+      description: "Implements code"
+  
+  tasks:
+    # Stage 1: Create file (normal)
+    - id: "create_file"
+      name: "Create File"
+      role: "developer"
+      action: "create_file"
+      params:
+        path: "node_modules/workflow-engine/artifacts/adhoc-demo.txt"
+        content: "Ad-hoc HITL test started."
+      hitl:
+        type: "approval"
+        message: "File created. Approve to continue?"
+      on_complete: "next"
+    
+    # Stage 2: FORCED AD-HOC HITL — AI must stop and ask before modifying
+    # No scheduled gate here. AI must interrupt and ask for human input.
+    - id: "modify_with_adhoc"
+      name: "Modify (Ad-hoc HITL Required)"
+      role: "developer"
+      action: "modify_file"
+      params:
+        path: "node_modules/workflow-engine/artifacts/adhoc-demo.txt"
+        append: "{{ask_user}}"  # Placeholder: AI MUST ask user what to append
+      adhoc_hitl:
+        trigger: "before_action"
+        question: "What content should I append to adhoc-demo.txt? (This is a forced ad-hoc HITL - I am stopping to ask you before proceeding.)"
+        param_to_fill: "append"
+      hitl:
+        type: "approval"
+        message: "Modification done. Approve to continue?"
+      on_complete: "next"
+    
+    # Stage 3: Another ad-hoc — AI encounters ambiguity, must ask
+    - id: "decide_path"
+      name: "Decide Path (Ad-hoc HITL)"
+      role: "developer"
+      action: "modify_file"
+      params:
+        path: "node_modules/workflow-engine/artifacts/adhoc-demo.txt"
+        append: "{{ask_user}}"
+      adhoc_hitl:
+        trigger: "before_action"
+        question: "Should I append 'Path A chosen' or 'Path B chosen'? (Ad-hoc: I need your decision before I can proceed.)"
+        options: ["Path A chosen", "Path B chosen"]
+        param_to_fill: "append"
+      hitl:
+        type: "none"
+      on_complete: "complete"
+    
+    - id: "complete"
+      name: "Complete"
+      role: "developer"
+      action: "complete"
+      hitl:
+        type: "info"
+        message: "Ad-hoc HITL test complete!"
+        auto_continue: true
+      on_complete: "end"

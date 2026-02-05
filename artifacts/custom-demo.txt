@@ -1,0 +1,3 @@
+Hello from custom workflow!
+[Validated]
+Modified by custom workflow stage 3

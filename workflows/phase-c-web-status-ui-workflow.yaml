@@ -13,9 +13,12 @@ workflow:
     developer:
       mode: "agent"
       description: "Implements web-status-ui pieces"
+    reviewer:
+      mode: "plan"
+      description: "Reviews code against PRD"
     validator:
       mode: "agent"
-      description: "Validates git context, runs code quality"
+      description: "Validates git context, runs code quality, AI UAT via agent-browser"
 
   tasks:
     # Piece 0: setup_git — Create branch/worktree
@@ -53,8 +56,38 @@ workflow:
         deliverable: "web-status-ui/ with Node server, reads memory/projects/<project>/WAITING_ON.md"
         validation: "npm run start in web-status-ui, browser shows WAITING_ON content"
       hitl:
+        type: "none"
+      on_complete: "piece_1_code_review"
+
+    - id: "piece_1_code_review"
+      name: "Piece 1: Code review"
+      role: "reviewer"
+      action: "review"
+      params:
+        file: "web-status-ui/server.js"
+        criteria: "PRD compliance, port fallback (3456-3458), no obvious bugs"
+      hitl:
+        type: "none"
+      on_complete: "piece_1_ai_uat"
+
+    - id: "piece_1_ai_uat"
+      name: "Piece 1: AI UAT (agent-browser)"
+      role: "validator"
+      action: "implement"
+      params:
+        deliverable: "Start server, use agent-browser/Playwright to navigate to http://localhost:PORT, verify WAITING_ON content in page"
+        validation: "AI confirms UI displays WAITING_ON. Kill server after verification."
+      hitl:
+        type: "none"
+      on_complete: "piece_1_user_uat"
+
+    - id: "piece_1_user_uat"
+      name: "Piece 1: User UAT"
+      role: "validator"
+      action: "complete"
+      hitl:
         type: "approval"
-        message: "Piece 1 complete. UAT: Server starts, WAITING_ON displayed? Code quality passed? Proceed to Piece 2?"
+        message: "Code review and AI UAT passed. User UAT: Server starts, WAITING_ON displayed? Proceed to Piece 2?"
       on_complete: "piece_2"
 
     # Piece 2: workflow-state.json + execution-log
@@ -68,8 +101,38 @@ workflow:
         deliverable: "Extend UI: read workflow-state.json, execution-log.md; show paused state, last run"
         validation: "UI shows paused workflow or last run status when files exist"
       hitl:
+        type: "none"
+      on_complete: "piece_2_code_review"
+
+    - id: "piece_2_code_review"
+      name: "Piece 2: Code review"
+      role: "reviewer"
+      action: "review"
+      params:
+        file: "web-status-ui/"
+        criteria: "PRD compliance, workflow-state and execution-log parsing"
+      hitl:
+        type: "none"
+      on_complete: "piece_2_ai_uat"
+
+    - id: "piece_2_ai_uat"
+      name: "Piece 2: AI UAT (agent-browser)"
+      role: "validator"
+      action: "implement"
+      params:
+        deliverable: "Start server, use agent-browser to verify workflow-state and execution-log displayed"
+        validation: "AI confirms UI shows paused state and last run when files exist"
+      hitl:
+        type: "none"
+      on_complete: "piece_2_user_uat"
+
+    - id: "piece_2_user_uat"
+      name: "Piece 2: User UAT"
+      role: "validator"
+      action: "complete"
+      hitl:
         type: "approval"
-        message: "Piece 2 complete. UAT: Paused state and execution log displayed? Proceed to Piece 3?"
+        message: "Code review and AI UAT passed. User UAT: Paused state and execution log displayed? Proceed to Piece 3?"
       on_complete: "piece_3"
 
     # Piece 3: Project list + pending gates
@@ -83,8 +146,38 @@ workflow:
         deliverable: "Scan memory/projects/*; list projects; show pending gates per project"
         validation: "UI lists projects, shows which have paused workflows"
       hitl:
+        type: "none"
+      on_complete: "piece_3_code_review"
+
+    - id: "piece_3_code_review"
+      name: "Piece 3: Code review"
+      role: "reviewer"
+      action: "review"
+      params:
+        file: "web-status-ui/"
+        criteria: "PRD compliance, project scan, pending gates display"
+      hitl:
+        type: "none"
+      on_complete: "piece_3_ai_uat"
+
+    - id: "piece_3_ai_uat"
+      name: "Piece 3: AI UAT (agent-browser)"
+      role: "validator"
+      action: "implement"
+      params:
+        deliverable: "Start server, use agent-browser to verify project list and pending gates"
+        validation: "AI confirms UI lists projects and shows pending gates"
+      hitl:
+        type: "none"
+      on_complete: "piece_3_user_uat"
+
+    - id: "piece_3_user_uat"
+      name: "Piece 3: User UAT"
+      role: "validator"
+      action: "complete"
+      hitl:
         type: "approval"
-        message: "Piece 3 complete. UAT: Project list and pending gates displayed? Phase C complete?"
+        message: "Code review and AI UAT passed. User UAT: Project list and pending gates displayed? Phase C complete?"
       on_complete: "uat_final"
 
     # Final: User UAT

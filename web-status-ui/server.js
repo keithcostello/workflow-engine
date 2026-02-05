@@ -17,7 +17,8 @@ const WORKSPACE_ROOT =
   process.env.npm_config_workspace ||
   path.resolve(__dirname, "..");
 
-const PORT = process.env.PORT || 3456;
+const PORTS = [3456, 3457, 3458];
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : null;
 const DEFAULT_PROJECT = "orchestration-training";
 
 function getWaitingOn(project = DEFAULT_PROJECT) {
@@ -38,15 +39,37 @@ function html(body) {
 </html>`;
 }
 
-const server = http.createServer((req, res) => {
-  const url = new URL(req.url || "/", `http://localhost:${PORT}`);
-  const project = url.searchParams.get("project") || DEFAULT_PROJECT;
+function createServer() {
+  const server = http.createServer((req, res) => {
+    const port = server.address()?.port;
+    const url = new URL(req.url || "/", `http://localhost:${port}`);
+    const project = url.searchParams.get("project") || DEFAULT_PROJECT;
 
-  const content = getWaitingOn(project);
-  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-  res.end(html(content));
-});
+    const content = getWaitingOn(project);
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(html(content));
+  });
+  return server;
+}
 
-server.listen(PORT, () => {
-  console.error(`[web-status-ui] http://localhost:${PORT} (workspace: ${WORKSPACE_ROOT})`);
-});
+function tryListen(ports, index = 0) {
+  const port = ports[index];
+  if (!port) {
+    console.error("[web-status-ui] All ports 3456-3458 in use");
+    process.exit(1);
+  }
+  const server = createServer();
+  server.listen(port, () => {
+    console.error(`[web-status-ui] http://localhost:${port} (workspace: ${WORKSPACE_ROOT})`);
+  });
+  server.once("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      server.close();
+      tryListen(ports, index + 1);
+    } else {
+      throw err;
+    }
+  });
+}
+
+tryListen(PORT ? [PORT] : PORTS);

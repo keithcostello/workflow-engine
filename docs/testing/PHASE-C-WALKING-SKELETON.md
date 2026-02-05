@@ -19,9 +19,12 @@
 | Check | Pass Criteria |
 |-------|---------------|
 | WS-C1.1 | Server starts (npm run start in web-status-ui) |
-| WS-C1.2 | WORKSPACE_ROOT points to workflow-engine (or correct workspace) |
-| WS-C1.3 | Browser at http://localhost:3456 shows WAITING_ON content |
-| WS-C1.4 | ESLint passes (npm run lint) |
+| WS-C1.2 | Port fallback: tries 3456, 3457, 3458 on EADDRINUSE |
+| WS-C1.3 | WORKSPACE_ROOT points to workflow-engine (or correct workspace) |
+| WS-C1.4 | Browser at http://localhost:PORT shows WAITING_ON content |
+| WS-C1.5 | Code review completed (reviewer subagent) |
+| WS-C1.6 | AI UAT completed (validator uses agent-browser to verify UI) |
+| WS-C1.7 | ESLint passes (npm run lint) |
 
 ---
 
@@ -32,6 +35,8 @@
 | WS-C2.1 | UI reads workflow-state.json when present |
 | WS-C2.2 | UI reads execution-log.md, shows last run status |
 | WS-C2.3 | Paused state displayed when workflow paused |
+| WS-C2.4 | Code review completed |
+| WS-C2.5 | AI UAT completed (agent-browser verifies) |
 
 ---
 
@@ -42,3 +47,5 @@
 | WS-C3.1 | UI scans memory/projects/* |
 | WS-C3.2 | UI lists all projects |
 | WS-C3.3 | UI shows pending gates (paused workflows) per project |
+| WS-C3.4 | Code review completed |
+| WS-C3.5 | AI UAT completed (agent-browser verifies) |

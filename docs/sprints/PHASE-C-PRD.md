@@ -46,10 +46,12 @@
 | Phase | Task | Gate |
 |-------|------|------|
 | 0 | setup_git (create branch/worktree) + validate_git | Automated pass or STOP |
-| 1 | Piece 1: Minimal server + WAITING_ON | UAT + code quality |
-| 2 | Piece 2: workflow-state.json + execution-log | UAT + code quality |
-| 3 | Piece 3: Project list + pending gates | UAT + code quality |
+| 1 | Piece 1: Minimal server + WAITING_ON | Code review → AI UAT (agent-browser) → User UAT (HITL) |
+| 2 | Piece 2: workflow-state.json + execution-log | Code review → AI UAT (agent-browser) → User UAT (HITL) |
+| 3 | Piece 3: Project list + pending gates | Code review → AI UAT (agent-browser) → User UAT (HITL) |
 | 4 | User UAT (final) | HITL — no push to main until approved |
+
+**Per-piece gate sequence**: Developer implements → Code review (reviewer) → AI UAT (validator, agent-browser/Playwright) → User UAT (HITL)
 
 ---
 

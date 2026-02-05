@@ -15,3 +15,5 @@
 **Post-sprint**: WALKING-SKELETON-TEST.md checklist executed — Phase B run PASS (Definition 1 + 2). mcp-server/README.md added with Cursor config.
 
 **MCP validation**: tools/list (4 tools), workflow_list (11 workflows) — PASS. README updated with setup notes (config location, path format, Windows fallback) and test results.
+
+**Phase C bootstrap + Piece 1**: Branch feature/phase-c-web-status-ui created. PRD (PHASE-C-PRD.md), DEVELOPMENT-POLICY.md, workflow (phase-c-web-status-ui-workflow.yaml), scripts (setup_git, validate_git), web-status-ui minimal server. Server reads WAITING_ON.md. ESLint passes. Gate 1 UAT pending.

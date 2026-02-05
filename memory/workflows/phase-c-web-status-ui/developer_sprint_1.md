@@ -81,3 +81,40 @@ web-status-ui/ with Node server, reads memory/projects/<project>/WAITING_ON.md
 
 ### Summary
 Validated existing implementation of piece 1. Server starts successfully, reads WAITING_ON.md for the specified project, and returns formatted HTML response. All validation checks pass.
+
+---
+
+### Task: piece_2
+- **Action**: implement
+- **Task ID**: piece_2
+- **Status**: Complete
+- **Timestamp**: 2026-02-05
+- **Branch**: cursor/ui-workflow-status-0b49
+
+### Deliverable
+Extend UI: read workflow-state.json, execution-log.md; show paused state, last run
+
+### Validation Results
+
+| Check | Result |
+|-------|--------|
+| npm install | Success - dependencies installed |
+| npm run start | Success - server starts on port 3456 |
+| Workflow State display | Success - shows "Paused at task: piece_2" with workflow path and timestamp |
+| Last Run display | Success - shows workflow name, status "complete", end time from execution-log.md |
+| Paused workflow detection | Success - shows "PENDING GATE" in project list for paused workflows |
+
+### Implementation Details
+- `getWorkflowState(project)` reads `memory/projects/<project>/workflow-state.json`
+- `getExecutionLogLastRun(project)` reads `memory/workflows/<project>/execution-log.md`
+- Parses execution log for last run header, status, and end time
+- Displays "Paused" section when workflow-state.json has status="paused"
+- Displays "Last Run" section from execution log
+- Project list shows "PENDING GATE" for projects with paused workflows
+
+### Artifacts
+- `web-status-ui/server.js` (already implemented)
+- `memory/projects/orchestration-training/workflow-state.json` (test data)
+
+### Summary
+Validated piece 2 functionality. Server reads workflow-state.json and execution-log.md, displays paused workflow state and last run information correctly. All validation checks pass. Pushed to branch cursor/ui-workflow-status-0b49.

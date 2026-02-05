@@ -18,8 +18,8 @@
 
 ## Next
 
-- **Phase C Piece 1**: Complete — Gate 1 UAT pending (user approve to proceed to Piece 2)
-- Phase C Piece 2: Add workflow-state.json + execution-log
+- **Phase C Piece 1**: Complete — Gate 1 UAT approved
+- Phase C Piece 2: Add workflow-state.json + execution-log — implemented, Gate 2 UAT pending
 - Phase C Piece 3: Project list + pending gates
 - Phase D: Web Workflow Builder (after C)
 

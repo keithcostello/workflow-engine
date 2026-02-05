@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
- * Phase C Web Status UI - Piece 1
- * Minimal server that reads memory/projects/<project>/WAITING_ON.md
+ * Phase C Web Status UI - Piece 1 + 2 + 3
+ * Reads: memory/projects/<project>/WAITING_ON.md, workflow-state.json
+ *        memory/workflows/<project>/execution-log.md
+ * Scans: memory/projects/* for project list and pending gates
  * Config: WORKSPACE_ROOT env or --workspace <path>
  */
 
@@ -29,6 +31,49 @@ function getWaitingOn(project = DEFAULT_PROJECT) {
   return fs.readFileSync(p, "utf-8");
 }
 
+function getWorkflowState(project = DEFAULT_PROJECT) {
+  const p = path.join(WORKSPACE_ROOT, "memory", "projects", project, "workflow-state.json");
+  if (!fs.existsSync(p)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(p, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+
+function getExecutionLogLastRun(project = DEFAULT_PROJECT) {
+  const p = path.join(WORKSPACE_ROOT, "memory", "workflows", project, "execution-log.md");
+  if (!fs.existsSync(p)) return null;
+  const raw = fs.readFileSync(p, "utf-8");
+  const allRunHeaders = raw.matchAll(/## Run:\s*(.+?)\s*\|\s*\d{4}-\d{2}-\d{2}/g);
+  const headers = [...allRunHeaders];
+  const lastHeader = headers.length > 0 ? headers[headers.length - 1][1].trim() : null;
+  const statusMatch = raw.match(/\*\*Status\*\*:\s*(\S+)/g);
+  const lastStatus = statusMatch ? statusMatch[statusMatch.length - 1].replace(/\*\*Status\*\*:\s*/, "") : null;
+  const endMatch = raw.match(/\*\*End\*\*:\s*([^\n*]+)/g);
+  const lastEnd = endMatch ? endMatch[endMatch.length - 1].replace(/\*\*End\*\*:\s*/, "").trim() : null;
+  return {
+    workflow: lastHeader || "—",
+    status: lastStatus || "—",
+    end: lastEnd || "—",
+  };
+}
+
+function getProjectList() {
+  const projectsDir = path.join(WORKSPACE_ROOT, "memory", "projects");
+  if (!fs.existsSync(projectsDir)) return [];
+  const entries = fs.readdirSync(projectsDir, { withFileTypes: true });
+  return entries.filter((e) => e.isDirectory()).map((e) => e.name).sort();
+}
+
+function getProjectsWithPendingGates() {
+  const projects = getProjectList();
+  return projects.filter((p) => {
+    const state = getWorkflowState(p);
+    return state && state.status === "paused";
+  });
+}
+
 function html(body) {
   return `<!DOCTYPE html>
 <html>
@@ -39,13 +84,67 @@ function html(body) {
 </html>`;
 }
 
+function buildPageContent(project) {
+  const projects = getProjectList();
+  const pendingGates = getProjectsWithPendingGates();
+  const waitingOn = getWaitingOn(project);
+  const workflowState = getWorkflowState(project);
+  const lastRun = getExecutionLogLastRun(project);
+
+  let out = "## Project List\n\n";
+  if (projects.length === 0) {
+    out += "No projects found in memory/projects/\n\n";
+  } else {
+    for (const p of projects) {
+      const hasPending = pendingGates.includes(p);
+      out += `- ${p}${hasPending ? " — **PENDING GATE** (paused workflow)" : ""}\n`;
+    }
+    out += "\n";
+  }
+
+  out += "## Pending Gates\n\n";
+  if (pendingGates.length === 0) {
+    out += "No paused workflows.\n\n";
+  } else {
+    for (const p of pendingGates) {
+      const state = getWorkflowState(p);
+      out += `- **${p}**: paused at ${state?.last_task_id || "—"}\n`;
+    }
+    out += "\n";
+  }
+
+  out += "---\n\n";
+  out += `## Project: ${project}\n\n`;
+  out += waitingOn;
+
+  out += "\n\n---\n\n## Workflow State\n\n";
+  if (workflowState && workflowState.status === "paused") {
+    out += `**Paused** at task: ${workflowState.last_task_id || "—"}\n`;
+    out += `Workflow: ${workflowState.workflow_path || "—"}\n`;
+    out += `Paused at: ${workflowState.paused_at || "—"}\n`;
+  } else {
+    out += "No paused workflow.\n";
+  }
+
+  out += "\n## Last Run (Execution Log)\n\n";
+  if (lastRun) {
+    out += `**Workflow**: ${lastRun.workflow}\n`;
+    out += `**Status**: ${lastRun.status}\n`;
+    out += `**End**: ${lastRun.end}\n`;
+  } else {
+    out += "No execution log found.\n";
+  }
+
+  return out;
+}
+
 function createServer() {
   const server = http.createServer((req, res) => {
     const port = server.address()?.port;
     const url = new URL(req.url || "/", `http://localhost:${port}`);
     const project = url.searchParams.get("project") || DEFAULT_PROJECT;
 
-    const content = getWaitingOn(project);
+    const content = buildPageContent(project);
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(html(content));
   });

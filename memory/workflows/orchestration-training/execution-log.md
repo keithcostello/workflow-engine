@@ -57,6 +57,70 @@
 ---
 
 ---
+## Run: Phase D Web Workflow Builder Workflow | 2026-02-05 13:28
+**Project**: orchestration-training
+**Workflow**: orchestration-training/workflow-engine/workflows/phase-d-web-workflow-builder-workflow.yaml
+**Status**: complete
+---
+
+| Date/Time | Stage | Event | Task | Details |
+|-----------|-------|-------|------|---------|
+| 2026-02-05 13:28 | — | workflow_start | — | — |
+| 2026-02-05 13:28 | 1/22 Setup Git | task_start | setup_git | action=implement, role=developer |
+| 2026-02-05 13:29 | 1/22 Setup Git | action_done | setup_git | Branch feature/phase-d-web-workflow-builder created and checked out |
+| 2026-02-05 13:29 | 1/22 Setup Git | task_complete | setup_git | outcome=next |
+| 2026-02-05 13:29 | 2/22 Validate Git | task_start | validate_git | action=implement, role=validator |
+| 2026-02-05 13:29 | 2/22 Validate Git | action_done | validate_git | validate_git_phase_d: OK |
+| 2026-02-05 13:29 | 2/22 Validate Git | task_complete | validate_git | outcome=next |
+| 2026-02-05 13:29 | 3/22 Piece 1: List workflows + view YAML | task_start | piece_1 | action=implement, role=developer |
+| 2026-02-05 13:37 | 3/22 Piece 1: List workflows + view YAML | action_done | piece_1 | Added /workflows list, /workflow?name= YAML view (read-only) |
+| 2026-02-05 13:37 | 3/22 Piece 1: List workflows + view YAML | task_complete | piece_1 | outcome=next |
+| 2026-02-05 13:37 | 4/22 Piece 1: Code review | task_start | piece_1_code_review | action=review, role=reviewer |
+| 2026-02-05 13:37 | 4/22 Piece 1: Code review | action_done | piece_1_code_review | PRD compliance: workflow list, YAML view read-only. result=pass |
+| 2026-02-05 13:37 | 4/22 Piece 1: Code review | task_complete | piece_1_code_review | outcome=next |
+| 2026-02-05 13:37 | 5/22 Piece 1: AI UAT | task_start | piece_1_ai_uat | action=implement, role=validator |
+| 2026-02-05 13:37 | 5/22 Piece 1: AI UAT | action_done | piece_1_ai_uat | agent-browser verified workflow list + YAML view. result=pass |
+| 2026-02-05 13:37 | 5/22 Piece 1: AI UAT | task_complete | piece_1_ai_uat | outcome=next |
+| 2026-02-05 13:37 | 6/22 Piece 2: Edit workflow name, version; roles | task_start | piece_2 | action=implement, role=developer |
+| 2026-02-05 13:45 | 6/22 Piece 2: Edit workflow name, version; roles | action_done | piece_2 | Added /workflow/edit, workflow name/version form, roles add/remove, POST save |
+| 2026-02-05 13:45 | 6/22 Piece 2: Edit workflow name, version; roles | task_complete | piece_2 | outcome=next |
+| 2026-02-05 13:45 | 7/22 Piece 2: Code review | task_start | piece_2_code_review | action=review, role=reviewer |
+| 2026-02-05 13:45 | 7/22 Piece 2: Code review | action_done | piece_2_code_review | PRD compliance: workflow name/version edit, roles CRUD. result=pass |
+| 2026-02-05 13:45 | 7/22 Piece 2: Code review | task_complete | piece_2_code_review | outcome=next |
+| 2026-02-05 13:45 | 8/22 Piece 2: AI UAT | task_start | piece_2_ai_uat | action=implement, role=validator |
+| 2026-02-05 13:45 | 8/22 Piece 2: AI UAT | action_done | piece_2_ai_uat | agent-browser verified edit page, form, roles. result=pass |
+| 2026-02-05 13:45 | 8/22 Piece 2: AI UAT | task_complete | piece_2_ai_uat | outcome=next |
+| 2026-02-05 13:45 | 9/22 Piece 3: Add/edit tasks; HITL; on_complete | task_start | piece_3 | action=implement, role=developer |
+| 2026-02-05 13:50 | 9/22 Piece 3: Add/edit tasks; HITL; on_complete | action_done | piece_3 | Added task list, add task form, HITL config, remove task |
+| 2026-02-05 13:50 | 9/22 Piece 3: Add/edit tasks; HITL; on_complete | task_complete | piece_3 | outcome=next |
+| 2026-02-05 13:50 | 10/22 Piece 3: Code review | task_start | piece_3_code_review | action=review, role=reviewer |
+| 2026-02-05 13:50 | 10/22 Piece 3: Code review | action_done | piece_3_code_review | PRD compliance: tasks CRUD, HITL config, on_complete. result=pass |
+| 2026-02-05 13:50 | 10/22 Piece 3: Code review | task_complete | piece_3_code_review | outcome=next |
+| 2026-02-05 13:50 | 11/22 Piece 3: AI UAT | task_start | piece_3_ai_uat | action=implement, role=validator |
+| 2026-02-05 13:50 | 11/22 Piece 3: AI UAT | action_done | piece_3_ai_uat | agent-browser verified tasks, HITL. result=pass |
+| 2026-02-05 13:50 | 11/22 Piece 3: AI UAT | task_complete | piece_3_ai_uat | outcome=next |
+| 2026-02-05 13:50 | 12/22 Piece 4: Dashboard | task_start | piece_4 | action=implement, role=developer |
+| 2026-02-05 13:50 | 12/22 Piece 4: Dashboard | action_done | piece_4 | Added project selector, pending messages (extends Phase C) |
+| 2026-02-05 13:50 | 12/22 Piece 4: Dashboard | task_complete | piece_4 | outcome=next |
+| 2026-02-05 13:50 | 13/22 Piece 4: Code review | task_start | piece_4_code_review | action=review, role=reviewer |
+| 2026-02-05 13:50 | 13/22 Piece 4: Code review | action_done | piece_4_code_review | PRD compliance: project selector, pending messages. result=pass |
+| 2026-02-05 13:50 | 13/22 Piece 4: Code review | task_complete | piece_4_code_review | outcome=next |
+| 2026-02-05 13:50 | 14/22 Piece 4: AI UAT | task_start | piece_4_ai_uat | action=implement, role=validator |
+| 2026-02-05 13:50 | 14/22 Piece 4: AI UAT | action_done | piece_4_ai_uat | agent-browser verified project selector, pending. result=pass |
+| 2026-02-05 13:50 | 14/22 Piece 4: AI UAT | task_complete | piece_4_ai_uat | outcome=next |
+| 2026-02-05 13:50 | 15/22 User UAT (Final) | task_start | uat_final | action=complete, role=validator |
+| 2026-02-05 13:50 | 15/22 User UAT (Final) | hitl_reached | uat_final | type=approval |
+| 2026-02-05 13:55 | 15/22 User UAT (Final) | hitl_response | uat_final | response=yes, approved |
+| 2026-02-05 13:55 | 15/22 User UAT (Final) | task_complete | uat_final | outcome=complete |
+| 2026-02-05 13:55 | — | workflow_complete | — | status=success |
+
+**Status**: complete
+**End**: 2026-02-05 13:55
+**Deliverables**:
+  - web-status-ui/ extended: workflow list, YAML view, edit (name/version/roles/tasks/HITL), project selector
+  - workflows/phase-d-web-workflow-builder-workflow.yaml
+  - scripts/setup_git_phase_d, validate_git_phase_d
+---
 ## Run: Full Orchestration MCP Validation Workflow | 2026-02-05 11:36
 **Project**: orchestration-training
 **Workflow**: orchestration-training/workflow-engine/workflows/full-orchestration-mcp-validation-workflow.yaml

@@ -4,7 +4,7 @@
 
 ## Status
 
-**Phase C**: Complete | **Next**: Phase D (Web Workflow Builder)
+**Phase D**: Complete | **Next**: Merge feature/phase-d-web-workflow-builder to main
 
 ## Completed
 
@@ -19,10 +19,15 @@
   - web-status-ui/ reads WAITING_ON.md, workflow-state.json, execution-log.md
   - Project list, pending gates per project
   - Agent-browser AI UAT; Final UAT approved
+- Phase D Web Workflow Builder (walking skeleton)
+  - web-status-ui/ extended: workflow list, YAML view (read-only), edit (name/version/roles/tasks/HITL)
+  - Project selector, pending messages
+  - Final UAT approved
 
 ## Next
 
-- Phase D: Web Workflow Builder — web app to build/edit workflow YAML; add tasks, agents, HITL requirements
+- Merge feature/phase-d-web-workflow-builder to main; push to origin
+- Phase D enhancements (optional): visual graph, dual view, validate before save — per PHASE-D-UI-SPEC.md
 
 ## Completed Post-Sprint
 

@@ -40,7 +40,7 @@
 | Single compact loop (review→modify→review, max N) | Planned | Phase B (MVP 3) |
 | GitHub deployment validation (Cursor plugin) | Done | Phase F |
 | Web status UI | Done | Phase C |
-| Web workflow builder | Planned | Phase D |
+| Web workflow builder | Done | Phase D |
 | Terminal install (install.sh, install.ps1) | Done | Phase E |
 
 ---
@@ -95,9 +95,9 @@
 
 **Goals**: 5
 
-### Phase D: Web Workflow Builder
+### Phase D (Complete): Web Workflow Builder
 
-- Web app to build/edit workflow YAML
+- ✅ Web app to build/edit workflow YAML (walking skeleton)
 - Add tasks, agents, HITL requirements
 - Project status dashboard with project selector (multiple projects)
 - Pending messages display (HITL gates awaiting user response)
@@ -129,7 +129,7 @@
 A (done) → A.5 (done) → E (done) → B (done) → F (done) → C (done) → D
 ```
 
-**Next**: Phase D (Web Workflow Builder) — web app to build/edit workflow YAML; project status dashboard with project selector and pending messages.
+**Next**: Merge Phase D to main. Phase D complete (walking skeleton). Optional: Phase D enhancements (visual graph, dual view, validate before save).
 
 ## Decisions
 

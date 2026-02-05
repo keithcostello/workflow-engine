@@ -1,20 +1,21 @@
 # Project Next Steps
 
 **Last Updated**: 2026-02-05
-**Current Phase**: Phase D (Web Workflow Builder)
+**Current Phase**: Phase D complete — ready to merge
 
 ## What's Next
 
-Phase D: Web app to build/edit workflow YAML; project status dashboard with selector; pending messages.
+1. **Merge to main**: Merge feature/phase-d-web-workflow-builder to main; push to origin
+2. **Optional Phase D enhancements**: Visual graph view, dual view (visual + YAML), validate before save — per PHASE-D-UI-SPEC.md
 
 ## How to Start
 
-1. **Workflow exists**: Say "Execute workflows/phase-d-web-workflow-builder-workflow.yaml"
-2. **Prerequisites**: setup_git_phase_d and validate_git_phase_d scripts exist for Phase D branch (`feature/phase-d-web-workflow-builder`).
+1. **Merge**: `git checkout main && git merge feature/phase-d-web-workflow-builder && git push origin main`
+2. **Phase D enhancements** (if desired): Create new branch, implement visual graph, dual view, validation
 
 ## How to Ask
 
-Say any of: "Start the next sprint", "How do I start the next sprint?", "Start Phase D", "How to proceed?", "What's next?"
+Say any of: "Start the next sprint", "How do I start the next sprint?", "How to proceed?", "What's next?"
 
 ## Resume (if paused)
 

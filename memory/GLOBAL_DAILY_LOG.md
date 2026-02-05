@@ -3,6 +3,17 @@
 ## 2026-02-05
 
 **Project**: orchestration-training  
+**Completed**: Phase D Web Workflow Builder Workflow  
+**Changes**: Walking skeleton — Piece 1 (workflow list, YAML view), Piece 2 (edit name/version/roles), Piece 3 (tasks, HITL, on_complete), Piece 4 (project selector, pending messages). Final UAT approved.  
+**Deliverables**:
+  - web-status-ui/ extended with workflow builder (list, view, edit)
+  - workflows/phase-d-web-workflow-builder-workflow.yaml
+  - scripts/setup_git_phase_d, validate_git_phase_d
+**Next**: Merge feature/phase-d-web-workflow-builder to main; push to origin
+
+---
+
+**Project**: orchestration-training  
 **Completed**: Phase B MCP Sprint Workflow  
 **Changes**: Sprint completed with walking skeleton methodology, all 8 tasks executed with HITL gates  
 **Deliverables**:

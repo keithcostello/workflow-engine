@@ -1,4 +1,4 @@
-# Workflow Engine - Component AI System
+# Cursor Workflow Engine - Component AI System
 
 ## 🎯 Overview
 

@@ -1,0 +1,17 @@
+{
+  "name": "web-status-ui",
+  "version": "0.1.0",
+  "description": "Phase C Web Status UI - reads memory files",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "lint": "eslint server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0"
+  }
+}

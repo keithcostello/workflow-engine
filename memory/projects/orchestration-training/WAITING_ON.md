@@ -4,23 +4,22 @@
 
 ## Status
 
-**Phase B MCP Sprint**: Complete
+**Phase F**: Complete | **Next**: Phase C (Web Status UI)
 
 ## Completed
 
 - Phase B MCP Server (walking skeleton)
   - mcp-server/ with package.json, tsconfig, src/
-  - server.ts (stdio transport, 4 tools)
-  - workflowManager.ts (getActiveWorkflow, listWorkflows, loadWorkflow)
   - Tools: workflow_get_active, workflow_list, workflow_load, workflow_handle_hitl
-- PRD: docs/sprints/PHASE-B-MCP-SPRINT-PRD.md
-- Architecture: docs/design/MCP-SERVER-ARCHITECTURE.md
-- Workflow: workflows/phase-b-mcp-sprint-workflow.yaml
+- Phase F GitHub deployment
+  - Repo: https://github.com/keithcostello/workflow-engine
+  - npm install from GitHub validated in cursor_github_testing
+  - AI-driven setup (memory, MCP config, rules)
 
 ## Next
 
-- Phase F (GitHub deployment validation) per ORCHESTRATION-ROADMAP
-- Phase C/D (Web status UI, workflow builder)
+- **Phase C**: Web Status UI — web app reading memory files (workflow-state.json, WAITING_ON.md), project status, pending gates
+- Phase D: Web Workflow Builder (after C)
 
 ## Completed Post-Sprint
 

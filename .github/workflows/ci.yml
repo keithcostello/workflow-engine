@@ -2,12 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, feature/phase-c-web-status-ui ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop, feature/phase-c-web-status-ui ]
 
 jobs:
-  lint:
+  lint-python:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -23,3 +23,18 @@ jobs:
         run: |
           flake8 src/workflow_executor.py --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 src/workflow_executor.py --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+  lint-web-status-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install ESLint
+        run: |
+          cd web-status-ui && npm install --save-dev eslint
+      - name: Lint web-status-ui
+        run: |
+          cd web-status-ui && npm run lint

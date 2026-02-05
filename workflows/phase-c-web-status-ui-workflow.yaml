@@ -1,0 +1,98 @@
+# Phase C Web Status UI Workflow
+# Walking skeleton: setup_git → validate_git → Piece 1 → Gate 1 → Piece 2 → Gate 2 → Piece 3 → Gate 3
+# Run: Execute workflows/phase-c-web-status-ui-workflow.yaml
+# PRD: docs/sprints/PHASE-C-PRD.md
+#
+# Git (canonical): branch=feature/phase-c-web-status-ui, worktree=../workflow-engine-phase-c (optional)
+
+workflow:
+  name: "Phase C Web Status UI Workflow"
+  version: "1.0"
+
+  roles:
+    developer:
+      mode: "agent"
+      description: "Implements web-status-ui pieces"
+    validator:
+      mode: "agent"
+      description: "Validates git context, runs code quality"
+
+  tasks:
+    # Piece 0: setup_git — Create branch/worktree
+    - id: "setup_git"
+      name: "Setup Git (create branch/worktree)"
+      role: "developer"
+      action: "implement"
+      params:
+        deliverable: "Run scripts/setup_git.sh (or setup_git.ps1 on Windows)"
+        validation: "Branch feature/phase-c-web-status-ui exists and is checked out"
+      hitl:
+        type: "none"
+      on_complete: "validate_git"
+
+    # Piece 0: validate_git — Verify context
+    - id: "validate_git"
+      name: "Validate Git (branch/worktree)"
+      role: "validator"
+      action: "implement"
+      params:
+        deliverable: "Run scripts/validate_git.sh (or validate_git.ps1 on Windows)"
+        validation: "Script exits 0; we are on feature/phase-c-web-status-ui"
+      hitl:
+        type: "none"
+      on_complete: "piece_1"
+
+    # Piece 1: Minimal server + WAITING_ON
+    - id: "piece_1"
+      name: "Piece 1: Minimal server + read WAITING_ON"
+      role: "developer"
+      action: "implement"
+      params:
+        prd_path: "docs/sprints/PHASE-C-PRD.md"
+        piece: 1
+        deliverable: "web-status-ui/ with Node server, reads memory/projects/<project>/WAITING_ON.md"
+        validation: "npm run start in web-status-ui, browser shows WAITING_ON content"
+      hitl:
+        type: "approval"
+        message: "Piece 1 complete. UAT: Server starts, WAITING_ON displayed? Code quality passed? Proceed to Piece 2?"
+      on_complete: "piece_2"
+
+    # Piece 2: workflow-state.json + execution-log
+    - id: "piece_2"
+      name: "Piece 2: workflow-state.json + execution-log"
+      role: "developer"
+      action: "implement"
+      params:
+        prd_path: "docs/sprints/PHASE-C-PRD.md"
+        piece: 2
+        deliverable: "Extend UI: read workflow-state.json, execution-log.md; show paused state, last run"
+        validation: "UI shows paused workflow or last run status when files exist"
+      hitl:
+        type: "approval"
+        message: "Piece 2 complete. UAT: Paused state and execution log displayed? Proceed to Piece 3?"
+      on_complete: "piece_3"
+
+    # Piece 3: Project list + pending gates
+    - id: "piece_3"
+      name: "Piece 3: Project list + pending gates"
+      role: "developer"
+      action: "implement"
+      params:
+        prd_path: "docs/sprints/PHASE-C-PRD.md"
+        piece: 3
+        deliverable: "Scan memory/projects/*; list projects; show pending gates per project"
+        validation: "UI lists projects, shows which have paused workflows"
+      hitl:
+        type: "approval"
+        message: "Piece 3 complete. UAT: Project list and pending gates displayed? Phase C complete?"
+      on_complete: "uat_final"
+
+    # Final: User UAT
+    - id: "uat_final"
+      name: "User UAT (Final)"
+      role: "validator"
+      action: "complete"
+      hitl:
+        type: "approval"
+        message: "Phase C UAT complete. Approve to allow push to main. No push until you approve."
+      on_complete: "end"

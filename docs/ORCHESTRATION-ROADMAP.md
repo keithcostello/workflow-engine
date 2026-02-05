@@ -36,9 +36,9 @@
 | **Orchestrator + Subagents** | **Done** | **Phase A.5** |
 | Subagents (developer, reviewer, etc.) | Done | Phase A.5 |
 | Agent memory (per sprint) | Done | Phase A.5 |
-| MCP server | Deferred | Phase B |
+| MCP server | Done | Phase B |
 | Single compact loop (review→modify→review, max N) | Planned | Phase B (MVP 3) |
-| GitHub deployment validation (Cursor plugin) | Planned | Phase F |
+| GitHub deployment validation (Cursor plugin) | Done | Phase F |
 | Web status UI | Planned | Phase C |
 | Web workflow builder | Planned | Phase D |
 | Terminal install (install.sh, install.ps1) | Done | Phase E |
@@ -77,12 +77,12 @@
 
 **Goals**: 4
 
-### Phase F: GitHub Deployment — Cursor Plugin Validation
+### Phase F (Complete): GitHub Deployment — Cursor Plugin Validation
 
-- Validate orchestration-training as standalone GitHub plugin for Cursor
-- Package for install from GitHub (clone → install → configure Cursor MCP)
-- End-to-end validation: fresh clone → working in Cursor
-- **Sequence**: After Phase B (MCP). Gate before Phase C/D.
+- ✅ Dedicated repo: https://github.com/keithcostello/workflow-engine
+- ✅ npm install from GitHub: `npm install github:keithcostello/workflow-engine`
+- ✅ AI-driven setup (memory, MCP config, rules); user activates MCP in Cursor
+- ✅ Validated in cursor_github_testing (workflow_list, minimal-workflow execution)
 
 **Goals**: 8
 
@@ -121,10 +121,10 @@
 ## Phase Sequence
 
 ```
-A (done) → A.5 (done) → E (done) → B → F → C → D
+A (done) → A.5 (done) → E (done) → B (done) → F (done) → C → D
 ```
 
-Phase F (GitHub deployment validation) follows Phase B. Validates standalone Cursor plugin before web UI work.
+**Next**: Phase C (Web Status UI) — web app reading memory files, project status, pending gates.
 
 ## Decisions
 

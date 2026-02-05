@@ -1,1 +1,2 @@
 Hello from workflow!
+Modified by workflow stage 2

@@ -118,3 +118,47 @@ Extend UI: read workflow-state.json, execution-log.md; show paused state, last r
 
 ### Summary
 Validated piece 2 functionality. Server reads workflow-state.json and execution-log.md, displays paused workflow state and last run information correctly. All validation checks pass. Pushed to branch cursor/ui-workflow-status-0b49.
+
+---
+
+### Task: piece_3
+- **Action**: implement
+- **Task ID**: piece_3
+- **Status**: Complete
+- **Timestamp**: 2026-02-05
+- **Branch**: cursor/project-workflow-status-524c
+
+### Deliverable
+Scan memory/projects/*; list projects; show pending gates per project
+
+### Validation Results
+
+| Check | Result |
+|-------|--------|
+| npm install | Success - dependencies installed |
+| npm run lint | Success - no lint errors |
+| npm run start | Success - server starts on port 3456 |
+| Project List display | Success - shows all projects from memory/projects/* |
+| Pending Gates display | Success - shows "PENDING GATE" for projects with paused workflows |
+| Pending Gates section | Success - dedicated section lists paused projects with task ID |
+| Project Selector | Success - URLs to switch between projects |
+
+### Implementation Details
+- `getProjectList()` scans `memory/projects/*` and returns list of project directories
+- `getProjectsWithPendingGates()` filters projects with workflow-state.json status="paused"
+- `buildPageContent()` displays:
+  - Project Selector with links
+  - Project List with "PENDING GATE" indicators
+  - Dedicated "Pending Gates" section showing paused task IDs
+- Test data created for validation:
+  - `memory/projects/orchestration-training/workflow-state.json` (paused state)
+  - `memory/projects/demo-project/` (complete workflow, no pending gate)
+
+### Artifacts
+- `web-status-ui/server.js` (already implemented in previous pieces)
+- `memory/projects/orchestration-training/workflow-state.json`
+- `memory/projects/demo-project/WAITING_ON.md`
+- `memory/projects/demo-project/workflow-state.json`
+
+### Summary
+Validated piece 3 functionality. Server scans memory/projects/*, lists all projects, and shows pending gates for projects with paused workflows. UI displays Project List with "PENDING GATE" indicators and a dedicated Pending Gates section. All validation checks pass. Pushed to branch cursor/project-workflow-status-524c.

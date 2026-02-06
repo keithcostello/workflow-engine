@@ -181,3 +181,19 @@
   - Docker image docker-hello:latest
   - MCP validation: workflow_list, workflow_load, workflow_get_active, workflow_handle_hitl
 ---
+
+---
+## Run: Phase D Web Workflow Builder Workflow (Cloud Agent) | 2026-02-06 
+**Project**: orchestration-training
+**Workflow**: phase-d-web-workflow-builder-workflow.yaml
+**Status**: in_progress
+---
+
+| Date/Time | Stage | Event | Task | Details |
+|-----------|-------|-------|------|---------|
+| 2026-02-06 | 1/22 Setup Git | task_start | setup_git | action=implement, role=developer |
+| 2026-02-06 | 1/22 Setup Git | action_done | setup_git | Ran setup_git_phase_d.sh, branch feature/phase-d-web-workflow-builder created and checked out |
+| 2026-02-06 | 1/22 Setup Git | validation_done | setup_git | validate_git_phase_d.sh: OK |
+| 2026-02-06 | 1/22 Setup Git | push_done | setup_git | git push -u origin feature/phase-d-web-workflow-builder succeeded |
+| 2026-02-06 | 1/22 Setup Git | task_complete | setup_git | outcome=next, branch=feature/phase-d-web-workflow-builder |
+---

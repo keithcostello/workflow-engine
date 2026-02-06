@@ -119,4 +119,6 @@ Implemented Phase D Piece 2 - Workflow metadata editing and role management.
 ---
 
 ## Commit (Piece 2)
+- **Hash**: ff73fee
+- **Message**: feat(web-status-ui): Implement Phase D Piece 2 - Workflow metadata and role editing
 - **Branch**: cursor/workflow-roles-metadata-803a

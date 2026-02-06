@@ -56,7 +56,67 @@ Implemented Phase D Piece 1 - Minimal web app with workflow list and read-only Y
 
 ---
 
-## Commit
+## Commit (Piece 1)
 - **Hash**: 2b9f11e
 - **Message**: feat(web-status-ui): Implement Phase D Piece 1 - Workflow list and read-only YAML viewer
 - **Branch**: cursor/web-app-workflow-viewer-9d5a
+
+---
+
+## Task: piece_2
+
+### Action: implement
+
+### Params
+- **prd_path**: docs/sprints/PHASE-D-PRD.md
+- **piece**: 2
+- **deliverable**: Edit workflow name, version; add/edit/remove roles
+- **validation**: UI allows editing workflow metadata and roles
+
+### Result: complete
+
+### Artifacts
+- `web-status-ui/server.js` (enhanced with Phase D Piece 2 features)
+
+### Summary
+Implemented Phase D Piece 2 - Workflow metadata editing and role management.
+
+**Features implemented:**
+
+1. **Workflow Metadata Editing**
+   - Editable form for workflow name and version
+   - Save Metadata button persists changes to YAML file
+   - Success/error message banners for feedback
+
+2. **Role Editor**
+   - Role cards with edit and delete buttons
+   - Add Role button with dashed border (matching UI spec)
+   - Modal dialog for adding new roles (ID, mode dropdown, description)
+   - Modal dialog for editing existing roles
+   - Delete confirmation modal with warning
+   - Mode badges: agent (blue) / plan (purple)
+
+3. **API Endpoints**
+   - `POST /api/workflow/metadata` - Update workflow name and version
+   - `POST /api/workflow/role` - Add, edit, or delete roles
+   - Form-based API with redirect back to detail page
+   - YAML serialization using js-yaml
+
+4. **UI Improvements**
+   - Changed from "Read-only" to "Editable" badge
+   - Split layout: YAML preview (60%) | Editor panel (40%)
+   - Hover effects on role cards
+   - Modal overlays with backdrop
+   - Keyboard support (Escape to close modals)
+
+**Validation:**
+- Server starts successfully on port 3456
+- `/workflow?name=minimal-workflow.yaml` shows editable form
+- Metadata changes persist to YAML file
+- Add/edit/delete roles work correctly
+- ESLint passes with no errors
+
+---
+
+## Commit (Piece 2)
+- **Branch**: cursor/workflow-roles-metadata-803a

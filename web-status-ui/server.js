@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 /**
- * Phase D Web Workflow Builder - Piece 1
- * Minimal web app: List workflows from workflows/; view YAML (read-only)
+ * Phase D Web Workflow Builder - Piece 2
+ * Web app with workflow editing: metadata + roles
  * 
  * Features:
  * - Workflow List: Table with Name, Tasks count, Last Run, Status
  * - Workflow Detail: Split 60/40 layout - YAML code block + role cards
+ * - Workflow Metadata Editing: Edit name and version
+ * - Role Editor: Add, edit, remove roles with modal dialogs
  * - Modern UI matching Phase D UI Spec
  * 
  * Config: WORKSPACE_ROOT env or defaults to parent directory
@@ -213,6 +215,64 @@ function getWorkflowParsed(name) {
   }
 }
 
+function saveWorkflowYaml(name, content) {
+  if (!name || name.includes("..") || name.includes("/")) return { success: false, error: "Invalid filename" };
+  const p = path.join(WORKSPACE_ROOT, "workflows", name);
+  try {
+    fs.writeFileSync(p, content, "utf-8");
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+function updateWorkflowMetadata(name, updates) {
+  const raw = getWorkflowYaml(name);
+  if (!raw) return { success: false, error: "Workflow not found" };
+  
+  try {
+    const doc = yaml.load(raw);
+    const w = doc.workflow || doc;
+    
+    // Update name and version
+    if (updates.name !== undefined) w.name = updates.name;
+    if (updates.version !== undefined) w.version = updates.version;
+    
+    // Ensure workflow wrapper
+    if (!doc.workflow) {
+      doc.workflow = w;
+    }
+    
+    const newYaml = yaml.dump(doc, { lineWidth: -1, quotingType: '"', forceQuotes: false });
+    return saveWorkflowYaml(name, newYaml);
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+function updateWorkflowRoles(name, roles) {
+  const raw = getWorkflowYaml(name);
+  if (!raw) return { success: false, error: "Workflow not found" };
+  
+  try {
+    const doc = yaml.load(raw);
+    const w = doc.workflow || doc;
+    
+    // Update roles
+    w.roles = roles;
+    
+    // Ensure workflow wrapper
+    if (!doc.workflow) {
+      doc.workflow = w;
+    }
+    
+    const newYaml = yaml.dump(doc, { lineWidth: -1, quotingType: '"', forceQuotes: false });
+    return saveWorkflowYaml(name, newYaml);
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
 function escapeHtml(s) {
   return String(s)
     .replace(/&/g, "&amp;")
@@ -417,25 +477,34 @@ function buildWorkflowListPage(baseUrl) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Workflow Detail Page (Read-Only) (Piece 1 - Part 2)
-// Split 60/40: YAML code block | Role cards
+// Workflow Detail Page with Editing (Piece 2)
+// Split 60/40: YAML code block | Metadata + Role editor
 // ─────────────────────────────────────────────────────────────────────────────
 
-function buildWorkflowDetailPage(name, baseUrl) {
+function buildWorkflowDetailPage(name, baseUrl, message = null) {
   const yamlRaw = getWorkflowYaml(name);
   const doc = getWorkflowParsed(name);
   const w = doc?.workflow || doc || {};
   const roles = w.roles || {};
   const workflowName = w.name || name.replace(".yaml", "");
+  const workflowVersion = w.version || "1.0";
 
-  // Build role cards
+  // Build role cards with edit/delete buttons
   const roleCards = Object.entries(roles).map(([id, role]) => `
-    <div class="role-card">
+    <div class="role-card" data-role-id="${escapeHtml(id)}">
       <div class="role-header">
         <span class="role-name">${escapeHtml(id)}</span>
         <span class="role-mode ${role.mode === 'agent' ? 'mode-agent' : 'mode-plan'}">
           ${escapeHtml(role.mode || 'agent')}
         </span>
+        <div class="role-actions">
+          <button class="btn-icon" onclick="openEditRoleModal('${escapeHtml(id)}', '${escapeHtml(role.mode || 'agent')}', '${escapeHtml((role.description || '').replace(/'/g, "\\'"))}')" title="Edit role">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="btn-icon btn-danger" onclick="confirmDeleteRole('${escapeHtml(id)}')" title="Delete role">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
       </div>
       <div class="role-description">${escapeHtml(role.description || 'No description')}</div>
     </div>
@@ -444,12 +513,19 @@ function buildWorkflowDetailPage(name, baseUrl) {
   // Syntax highlight YAML
   const highlightedYaml = yamlRaw ? syntaxHighlightYaml(yamlRaw) : '<span class="no-content">Workflow not found</span>';
 
+  // Build message banner if present
+  const messageBanner = message ? `
+    <div class="message-banner ${message.type === 'success' ? 'message-success' : 'message-error'}">
+      ${escapeHtml(message.text)}
+    </div>
+  ` : '';
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${escapeHtml(workflowName)} - Workflow Detail</title>
+  <title>${escapeHtml(workflowName)} - Workflow Editor</title>
   <style>
     ${COMMON_STYLES}
     
@@ -468,10 +544,32 @@ function buildWorkflowDetailPage(name, baseUrl) {
       color: #ccc;
     }
     
+    .message-banner {
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .message-success {
+      background: #d4edda;
+      color: #155724;
+      border-bottom: 1px solid #c3e6cb;
+    }
+    .message-error {
+      background: #f8d7da;
+      color: #721c24;
+      border-bottom: 1px solid #f5c6cb;
+    }
+    
     .detail-header {
       background: #fff;
       padding: 20px 24px;
       border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+    .detail-header-left {
+      flex: 1;
     }
     .detail-title {
       font-size: 24px;
@@ -483,10 +581,10 @@ function buildWorkflowDetailPage(name, baseUrl) {
       color: #888;
       margin-top: 4px;
     }
-    .read-only-badge {
+    .edit-badge {
       display: inline-block;
-      background: #fff3cd;
-      color: #856404;
+      background: #e3f2fd;
+      color: #1565c0;
       padding: 4px 10px;
       border-radius: 4px;
       font-size: 12px;
@@ -520,26 +618,82 @@ function buildWorkflowDetailPage(name, baseUrl) {
     .yaml-code .comment { color: #6a9955; }
     .yaml-code .boolean { color: #569cd6; }
     
-    .roles-panel {
+    .editor-panel {
       flex: 0 0 40%;
       background: #fafafa;
       padding: 24px;
       overflow: auto;
       border-left: 1px solid #e0e0e0;
     }
-    .roles-title {
+    
+    /* Metadata Section */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-title {
       font-size: 18px;
       font-weight: 600;
       color: #333;
-      margin-bottom: 20px;
+      margin: 0;
     }
     
+    .metadata-form {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #666;
+      margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: #0066cc;
+      box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+    }
+    .form-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    
+    /* Role Cards */
+    .roles-section {
+      margin-top: 24px;
+    }
     .role-card {
       background: #fff;
       border: 1px solid #e0e0e0;
       border-radius: 8px;
       padding: 16px;
       margin-bottom: 12px;
+      transition: box-shadow 0.15s;
+    }
+    .role-card:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
     .role-header {
       display: flex;
@@ -568,6 +722,32 @@ function buildWorkflowDetailPage(name, baseUrl) {
       background: #f3e5f5;
       color: #7b1fa2;
     }
+    .role-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 4px;
+    }
+    .btn-icon {
+      background: transparent;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 6px;
+      cursor: pointer;
+      color: #666;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .btn-icon:hover {
+      background: #f0f0f0;
+      color: #333;
+    }
+    .btn-icon.btn-danger:hover {
+      background: #fee;
+      border-color: #f88;
+      color: #c00;
+    }
     .role-description {
       font-size: 13px;
       color: #666;
@@ -576,6 +756,126 @@ function buildWorkflowDetailPage(name, baseUrl) {
     .no-roles {
       color: #888;
       font-style: italic;
+      padding: 20px;
+      text-align: center;
+    }
+    
+    .add-role-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 16px;
+      background: #fff;
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      color: #666;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .add-role-btn:hover {
+      border-color: #0066cc;
+      color: #0066cc;
+      background: #f8fbff;
+    }
+    .add-role-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 90vh;
+      overflow: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #888;
+      padding: 4px;
+    }
+    .modal-close:hover {
+      color: #333;
+    }
+    .modal-body {
+      padding: 24px;
+    }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    
+    /* Form in modal */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .form-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+      background: #fff;
+    }
+    .form-select:focus {
+      outline: none;
+      border-color: #0066cc;
+    }
+    .form-textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 80px;
+    }
+    .form-textarea:focus {
+      outline: none;
+      border-color: #0066cc;
     }
     
     .no-content {
@@ -598,12 +898,16 @@ function buildWorkflowDetailPage(name, baseUrl) {
     ${escapeHtml(name)}
   </div>
   
+  ${messageBanner}
+  
   <div class="detail-header">
-    <h2 class="detail-title">
-      ${escapeHtml(workflowName)}
-      <span class="read-only-badge">Read-only</span>
-    </h2>
-    <div class="detail-subtitle">${escapeHtml(name)}</div>
+    <div class="detail-header-left">
+      <h2 class="detail-title">
+        ${escapeHtml(workflowName)}
+        <span class="edit-badge">Editable</span>
+      </h2>
+      <div class="detail-subtitle">${escapeHtml(name)}</div>
+    </div>
   </div>
   
   <div class="split-container">
@@ -611,14 +915,162 @@ function buildWorkflowDetailPage(name, baseUrl) {
       <pre class="yaml-code">${highlightedYaml}</pre>
     </div>
     
-    <div class="roles-panel">
-      <h3 class="roles-title">Roles</h3>
-      ${Object.keys(roles).length === 0 ? 
-        '<p class="no-roles">No roles defined</p>' : 
-        roleCards
-      }
+    <div class="editor-panel">
+      <!-- Metadata Section -->
+      <div class="metadata-section">
+        <div class="section-header">
+          <h3 class="section-title">Workflow Metadata</h3>
+        </div>
+        <form class="metadata-form" action="${baseUrl}/api/workflow/metadata" method="POST">
+          <input type="hidden" name="filename" value="${escapeHtml(name)}">
+          <div class="form-group">
+            <label class="form-label" for="workflow-name">Name</label>
+            <input type="text" id="workflow-name" name="name" class="form-input" value="${escapeHtml(workflowName)}" placeholder="Workflow name">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="workflow-version">Version</label>
+            <input type="text" id="workflow-version" name="version" class="form-input" value="${escapeHtml(workflowVersion)}" placeholder="1.0">
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Metadata</button>
+          </div>
+        </form>
+      </div>
+      
+      <!-- Roles Section -->
+      <div class="roles-section">
+        <div class="section-header">
+          <h3 class="section-title">Roles</h3>
+        </div>
+        ${Object.keys(roles).length === 0 ? 
+          '<p class="no-roles">No roles defined</p>' : 
+          roleCards
+        }
+        <button class="add-role-btn" onclick="openAddRoleModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Role
+        </button>
+      </div>
     </div>
   </div>
+  
+  <!-- Role Modal -->
+  <div class="modal-overlay" id="roleModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h4 class="modal-title" id="roleModalTitle">Add Role</h4>
+        <button class="modal-close" onclick="closeRoleModal()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <form action="${baseUrl}/api/workflow/role" method="POST">
+        <input type="hidden" name="filename" value="${escapeHtml(name)}">
+        <input type="hidden" name="action" id="roleAction" value="add">
+        <input type="hidden" name="originalId" id="originalRoleId" value="">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="role-id">Role ID</label>
+            <input type="text" id="role-id" name="roleId" class="form-input" placeholder="e.g., developer" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="role-mode">Mode</label>
+            <select id="role-mode" name="mode" class="form-select">
+              <option value="agent">Agent</option>
+              <option value="plan">Plan</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="role-description">Description</label>
+            <textarea id="role-description" name="description" class="form-textarea" placeholder="What does this role do?"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeRoleModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="roleSubmitBtn">Add Role</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h4 class="modal-title">Delete Role</h4>
+        <button class="modal-close" onclick="closeDeleteModal()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <form action="${baseUrl}/api/workflow/role" method="POST">
+        <input type="hidden" name="filename" value="${escapeHtml(name)}">
+        <input type="hidden" name="action" value="delete">
+        <input type="hidden" name="roleId" id="deleteRoleId" value="">
+        <div class="modal-body">
+          <p>Are you sure you want to delete the role "<strong id="deleteRoleName"></strong>"?</p>
+          <p style="color: #888; font-size: 13px; margin-top: 8px;">This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="background: #dc3545;">Delete</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <script>
+    // Role Modal Functions
+    function openAddRoleModal() {
+      document.getElementById('roleModalTitle').textContent = 'Add Role';
+      document.getElementById('roleAction').value = 'add';
+      document.getElementById('originalRoleId').value = '';
+      document.getElementById('role-id').value = '';
+      document.getElementById('role-mode').value = 'agent';
+      document.getElementById('role-description').value = '';
+      document.getElementById('roleSubmitBtn').textContent = 'Add Role';
+      document.getElementById('roleModal').classList.add('active');
+    }
+    
+    function openEditRoleModal(id, mode, description) {
+      document.getElementById('roleModalTitle').textContent = 'Edit Role';
+      document.getElementById('roleAction').value = 'edit';
+      document.getElementById('originalRoleId').value = id;
+      document.getElementById('role-id').value = id;
+      document.getElementById('role-mode').value = mode;
+      document.getElementById('role-description').value = description;
+      document.getElementById('roleSubmitBtn').textContent = 'Save Changes';
+      document.getElementById('roleModal').classList.add('active');
+    }
+    
+    function closeRoleModal() {
+      document.getElementById('roleModal').classList.remove('active');
+    }
+    
+    function confirmDeleteRole(id) {
+      document.getElementById('deleteRoleId').value = id;
+      document.getElementById('deleteRoleName').textContent = id;
+      document.getElementById('deleteModal').classList.add('active');
+    }
+    
+    function closeDeleteModal() {
+      document.getElementById('deleteModal').classList.remove('active');
+    }
+    
+    // Close modal on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', function(e) {
+        if (e.target === this) {
+          this.classList.remove('active');
+        }
+      });
+    });
+    
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+      }
+    });
+  </script>
 </body>
 </html>`;
 }
@@ -835,16 +1287,110 @@ function buildProjectStatusPage(project, baseUrl) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HTTP Server
+// HTTP Server with API Endpoints
 // ─────────────────────────────────────────────────────────────────────────────
 
+function parseFormBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", chunk => { body += chunk.toString(); });
+    req.on("end", () => {
+      try {
+        const params = new URLSearchParams(body);
+        const result = {};
+        for (const [key, value] of params) {
+          result[key] = value;
+        }
+        resolve(result);
+      } catch (err) {
+        reject(err);
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
 function createServer() {
-  const server = http.createServer((req, res) => {
+  const server = http.createServer(async (req, res) => {
     const port = server.address()?.port;
     const url = new URL(req.url || "/", `http://localhost:${port}`);
     const project = url.searchParams.get("project") || DEFAULT_PROJECT;
     const workflowName = url.searchParams.get("name");
     const baseUrl = `http://localhost:${port}`;
+
+    // API: Update workflow metadata
+    if (url.pathname === "/api/workflow/metadata" && req.method === "POST") {
+      try {
+        const body = await parseFormBody(req);
+        const filename = body.filename;
+        const result = updateWorkflowMetadata(filename, {
+          name: body.name,
+          version: body.version
+        });
+        
+        // Redirect back to workflow detail with message
+        res.writeHead(302, { 
+          "Location": `${baseUrl}/workflow?name=${encodeURIComponent(filename)}&msg=${result.success ? 'saved' : 'error'}`
+        });
+        res.end();
+        return;
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "text/plain" });
+        res.end("Error: " + err.message);
+        return;
+      }
+    }
+    
+    // API: Add/Edit/Delete role
+    if (url.pathname === "/api/workflow/role" && req.method === "POST") {
+      try {
+        const body = await parseFormBody(req);
+        const filename = body.filename;
+        const action = body.action; // add, edit, delete
+        const roleId = body.roleId;
+        const originalId = body.originalId;
+        
+        // Get current workflow
+        const doc = getWorkflowParsed(filename);
+        if (!doc) {
+          res.writeHead(404, { "Content-Type": "text/plain" });
+          res.end("Workflow not found");
+          return;
+        }
+        
+        const w = doc.workflow || doc;
+        let roles = w.roles || {};
+        
+        if (action === "add" || action === "edit") {
+          // If editing and ID changed, remove old entry
+          if (action === "edit" && originalId && originalId !== roleId) {
+            delete roles[originalId];
+          }
+          
+          // Add/update the role
+          roles[roleId] = {
+            mode: body.mode || "agent",
+            description: body.description || ""
+          };
+        } else if (action === "delete") {
+          delete roles[roleId];
+        }
+        
+        const result = updateWorkflowRoles(filename, roles);
+        
+        // Redirect back to workflow detail with message
+        const msgType = result.success ? 'saved' : 'error';
+        res.writeHead(302, { 
+          "Location": `${baseUrl}/workflow?name=${encodeURIComponent(filename)}&msg=${msgType}`
+        });
+        res.end();
+        return;
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "text/plain" });
+        res.end("Error: " + err.message);
+        return;
+      }
+    }
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
 
@@ -856,8 +1402,17 @@ function createServer() {
     }
     
     if (url.pathname === "/workflow" && workflowName) {
+      // Check for message parameter
+      const msg = url.searchParams.get("msg");
+      let message = null;
+      if (msg === "saved") {
+        message = { type: "success", text: "Changes saved successfully!" };
+      } else if (msg === "error") {
+        message = { type: "error", text: "Error saving changes. Please try again." };
+      }
+      
       res.writeHead(200);
-      res.end(buildWorkflowDetailPage(workflowName, baseUrl));
+      res.end(buildWorkflowDetailPage(workflowName, baseUrl, message));
       return;
     }
     

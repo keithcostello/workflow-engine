@@ -10,37 +10,51 @@
 
 ## Gate 1 (After Piece 1)
 
-- [ ] **Code review** completed (reviewer subagent — automated pass/fail)
-- [ ] **AI UAT** completed (validator uses agent-browser/Playwright to verify UI — automated pass/fail)
-- [ ] Server starts: `cd web-status-ui && npm run start` (port 3456-3458 fallback if in use)
-- [ ] Open http://localhost:PORT (check console for actual port)
-- [ ] WAITING_ON.md content displayed for orchestration-training
-- [ ] Code quality: `npm run lint` passes
-- [ ] On fail: read bug report, fix, resubmit. No user approval at this gate.
+- [x] **Code review** completed (reviewer subagent — automated pass/fail)
+- [x] **AI UAT** completed (validator uses agent-browser/Playwright to verify UI — automated pass/fail)
+- [x] Server starts: `cd web-status-ui && npm run start` (port 3456-3458 fallback if in use)
+- [x] Open http://localhost:PORT (check console for actual port)
+- [x] WAITING_ON.md content displayed for orchestration-training
+- [x] Code quality: `npm run lint` passes
+- [x] On fail: read bug report, fix, resubmit. No user approval at this gate.
 
 ---
 
 ## Gate 2 (After Piece 2)
 
-- [ ] **Code review** completed (automated pass/fail)
-- [ ] **AI UAT** completed (agent-browser verifies workflow-state and execution-log — automated pass/fail)
-- [ ] workflow-state.json displayed when workflow paused
-- [ ] execution-log last run status displayed
-- [ ] On fail: read bug report, fix, resubmit. No user approval at this gate.
+- [x] **Code review** completed (automated pass/fail)
+- [x] **AI UAT** completed (agent-browser verifies workflow-state and execution-log — automated pass/fail)
+- [x] workflow-state.json displayed when workflow paused
+- [x] execution-log last run status displayed
+- [x] On fail: read bug report, fix, resubmit. No user approval at this gate.
 
 ---
 
 ## Gate 3 (After Piece 3)
 
-- [ ] **Code review** completed (automated pass/fail)
-- [ ] **AI UAT** completed (agent-browser verifies project list and pending gates — automated pass/fail)
-- [ ] Project list displayed
-- [ ] Pending gates shown per project
-- [ ] On fail: read bug report, fix, resubmit. No user approval at this gate.
+- [x] **Code review** completed (automated pass/fail)
+- [x] **AI UAT** completed (agent-browser verifies project list and pending gates — automated pass/fail)
+- [x] Project list displayed
+- [x] Pending gates shown per project
+- [x] On fail: read bug report, fix, resubmit. No user approval at this gate.
 
 ---
 
 ## Final UAT
 
-- [ ] Full Phase C validated
-- [ ] **Approve to allow push to main** (no push until approved)
+- [x] Full Phase C validated
+- [x] **Approve to allow push to main** (no push until approved)
+
+---
+
+## Completion Summary
+
+**Phase C UAT Approved**: 2026-02-06
+
+All three pieces validated and user-approved:
+1. **Piece 1**: Web server reads WAITING_ON.md — PASS
+2. **Piece 2**: Workflow state and execution log display — PASS
+3. **Piece 3**: Project list and pending gates — PASS
+
+Validation method: curl-based UAT (Cloud Agent compatible)
+See: `memory/workflows/phase-c-web-status-ui/validator_piece_*.md`

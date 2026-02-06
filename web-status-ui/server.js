@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 /**
- * Phase C Web Status UI - Piece 1 + 2 + 3
- * Phase D Piece 1: List workflows from workflows/; view YAML (read-only)
- * Reads: memory/projects/<project>/WAITING_ON.md, workflow-state.json
- *        memory/workflows/<project>/execution-log.md
- * Scans: memory/projects/* for project list and pending gates
- *        workflows/*.yaml for workflow list
+ * Phase D Web Workflow Builder - Piece 1
+ * Minimal web app: list workflows from workflows/; view YAML (read-only)
+ * 
+ * Features:
+ * - Workflow list with table view (Name, Tasks, Last Run, Status)
+ * - Workflow detail view with 60/40 split (YAML left, roles right)
+ * - Professional styling matching PHASE-D-UI-SPEC.md
+ * 
  * Config: WORKSPACE_ROOT env or --workspace <path>
  */
 
@@ -25,6 +27,333 @@ const WORKSPACE_ROOT =
 const PORTS = [3456, 3457, 3458];
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : null;
 const DEFAULT_PROJECT = "orchestration-training";
+
+// ============================================================================
+// COMMON STYLES (Phase D UI Spec compliant)
+// ============================================================================
+const CSS_STYLES = `
+  :root {
+    --bg-light: #f5f5f5;
+    --bg-white: #ffffff;
+    --sidebar-bg: #2d2d2d;
+    --sidebar-text: #ffffff;
+    --text-primary: #333333;
+    --text-secondary: #666666;
+    --border-light: #e0e0e0;
+    --accent-blue: #0066cc;
+    --accent-orange: #f5a623;
+    --code-bg: #1e1e1e;
+    --code-text: #d4d4d4;
+    --code-key: #569cd6;
+    --code-string: #6a9955;
+    --code-comment: #6a9955;
+  }
+  
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    background: var(--bg-light);
+  }
+  
+  .layout {
+    display: flex;
+    min-height: 100vh;
+  }
+  
+  .sidebar {
+    width: 240px;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    padding: 20px 0;
+    flex-shrink: 0;
+  }
+  
+  .sidebar-header {
+    padding: 0 16px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 16px;
+  }
+  
+  .sidebar-header h1 {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  
+  .sidebar-nav a {
+    display: block;
+    padding: 10px 16px;
+    color: var(--sidebar-text);
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+  
+  .sidebar-nav a:hover {
+    background: rgba(255,255,255,0.1);
+  }
+  
+  .sidebar-nav a.active {
+    background: rgba(255,255,255,0.15);
+    border-left: 3px solid var(--accent-blue);
+  }
+  
+  .main-content {
+    flex: 1;
+    padding: 24px 32px;
+    overflow-x: auto;
+  }
+  
+  .page-header {
+    margin-bottom: 24px;
+  }
+  
+  .page-header h1 {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  
+  .page-header p {
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+  
+  .breadcrumb {
+    margin-bottom: 16px;
+  }
+  
+  .breadcrumb a {
+    color: var(--accent-blue);
+    text-decoration: none;
+  }
+  
+  .breadcrumb a:hover {
+    text-decoration: underline;
+  }
+  
+  .breadcrumb span {
+    color: var(--text-secondary);
+    margin: 0 8px;
+  }
+  
+  /* Tables */
+  .data-table {
+    width: 100%;
+    background: var(--bg-white);
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+    border-collapse: collapse;
+    overflow: hidden;
+  }
+  
+  .data-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: #fafafa;
+    border-bottom: 1px solid var(--border-light);
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .data-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-light);
+  }
+  
+  .data-table tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .data-table tr:nth-child(even) {
+    background: #fafafa;
+  }
+  
+  .data-table tr:hover {
+    background: #f0f7ff;
+  }
+  
+  .data-table a {
+    color: var(--accent-blue);
+    text-decoration: none;
+  }
+  
+  .data-table a:hover {
+    text-decoration: underline;
+  }
+  
+  /* Status badges */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  
+  .badge-success {
+    background: #e6f4ea;
+    color: #1e7e34;
+  }
+  
+  .badge-warning {
+    background: #fff3e0;
+    color: #e65100;
+  }
+  
+  .badge-info {
+    background: #e3f2fd;
+    color: #1565c0;
+  }
+  
+  .badge-default {
+    background: #f5f5f5;
+    color: #666;
+  }
+  
+  /* Split layout for workflow detail */
+  .split-layout {
+    display: flex;
+    gap: 24px;
+  }
+  
+  .split-left {
+    flex: 6;
+    min-width: 0;
+  }
+  
+  .split-right {
+    flex: 4;
+    min-width: 0;
+  }
+  
+  /* Code block */
+  .code-block {
+    background: var(--code-bg);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  
+  .code-header {
+    background: #252526;
+    padding: 8px 16px;
+    color: #ccc;
+    font-size: 12px;
+    border-bottom: 1px solid #3c3c3c;
+  }
+  
+  .code-content {
+    padding: 16px;
+    overflow-x: auto;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  
+  .code-content pre {
+    margin: 0;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--code-text);
+    white-space: pre;
+  }
+  
+  /* Role cards */
+  .role-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .role-card {
+    background: var(--bg-white);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  
+  .role-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  
+  .role-card-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  
+  .role-card p {
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+  
+  .mode-badge {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  
+  .mode-agent {
+    background: #e3f2fd;
+    color: #1565c0;
+  }
+  
+  .mode-plan {
+    background: #f3e5f5;
+    color: #7b1fa2;
+  }
+  
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 48px;
+    border: 2px dashed var(--border-light);
+    border-radius: 8px;
+    color: var(--text-secondary);
+  }
+  
+  .empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+  
+  /* Cards */
+  .card {
+    background: var(--bg-white);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  
+  .card h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  
+  /* Section header */
+  .section-header {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+  }
+`;
 
 function getWaitingOn(project = DEFAULT_PROJECT) {
   const p = path.join(WORKSPACE_ROOT, "memory", "projects", project, "WAITING_ON.md");
@@ -98,75 +427,6 @@ function getWorkflowYaml(name) {
   }
 }
 
-function html(body) {
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Web Status UI</title></head>
-<body>
-<pre>${body.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
-</body>
-</html>`;
-}
-
-function buildPageContent(project, baseUrl = "") {
-  const projects = getProjectList();
-  const pendingGates = getProjectsWithPendingGates();
-  const waitingOn = getWaitingOn(project);
-  const workflowState = getWorkflowState(project);
-  const lastRun = getExecutionLogLastRun(project);
-
-  let out = "";
-  if (baseUrl && projects.length > 0) {
-    out += "## Project Selector\n\n";
-    out += projects.map((p) => `${p === project ? "→ " : ""}${p}: ${baseUrl}/?project=${encodeURIComponent(p)}`).join("\n");
-    out += "\n\n";
-  }
-  out += "## Project List\n\n";
-  if (projects.length === 0) {
-    out += "No projects found in memory/projects/\n\n";
-  } else {
-    for (const p of projects) {
-      const hasPending = pendingGates.includes(p);
-      out += `- ${p}${hasPending ? " — **PENDING GATE** (paused workflow)" : ""}\n`;
-    }
-    out += "\n";
-  }
-
-  out += "## Pending Gates\n\n";
-  if (pendingGates.length === 0) {
-    out += "No paused workflows.\n\n";
-  } else {
-    for (const p of pendingGates) {
-      const state = getWorkflowState(p);
-      out += `- **${p}**: paused at ${state?.last_task_id || "—"}\n`;
-    }
-    out += "\n";
-  }
-
-  out += "---\n\n";
-  out += `## Project: ${project}\n\n`;
-  out += waitingOn;
-
-  out += "\n\n---\n\n## Workflow State\n\n";
-  if (workflowState && workflowState.status === "paused") {
-    out += `**Paused** at task: ${workflowState.last_task_id || "—"}\n`;
-    out += `Workflow: ${workflowState.workflow_path || "—"}\n`;
-    out += `Paused at: ${workflowState.paused_at || "—"}\n`;
-  } else {
-    out += "No paused workflow.\n";
-  }
-
-  out += "\n## Last Run (Execution Log)\n\n";
-  if (lastRun) {
-    out += `**Workflow**: ${lastRun.workflow}\n`;
-    out += `**Status**: ${lastRun.status}\n`;
-    out += `**End**: ${lastRun.end}\n`;
-  } else {
-    out += "No execution log found.\n";
-  }
-
-  return out;
-}
 
 function escapeHtml(s) {
   return String(s)
@@ -174,26 +434,6 @@ function escapeHtml(s) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-}
-
-function buildWorkflowListPage(baseUrl) {
-  const workflows = getWorkflowList();
-  const items = workflows
-    .map(
-      (w) =>
-        `<li><a href="${baseUrl}/workflow?name=${encodeURIComponent(w)}">${escapeHtml(w)}</a> ` +
-        `<a href="${baseUrl}/workflow/edit?name=${encodeURIComponent(w)}">Edit</a></li>`
-    )
-    .join("");
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Workflow List</title></head>
-<body>
-<h1>Workflow List</h1>
-<p><a href="${baseUrl}/">← Project Status</a></p>
-${workflows.length === 0 ? "<p>No workflows found in workflows/</p>" : `<ul>${items}</ul>`}
-</body>
-</html>`;
 }
 
 function getWorkflowParsed(name) {
@@ -206,97 +446,409 @@ function getWorkflowParsed(name) {
   }
 }
 
-function buildWorkflowDetailPage(name, baseUrl) {
-  const yamlRaw = getWorkflowYaml(name);
-  const yamlEscaped = yamlRaw ? escapeHtml(yamlRaw) : "";
+/**
+ * Get workflow metadata (name, version, task count, roles)
+ */
+function getWorkflowMeta(filename) {
+  const doc = getWorkflowParsed(filename);
+  if (!doc) return null;
+  const w = doc.workflow || doc;
+  const tasks = w.tasks || [];
+  const roles = w.roles || {};
+  return {
+    filename,
+    name: w.name || filename.replace(".yaml", ""),
+    version: w.version || "—",
+    taskCount: tasks.length,
+    roleCount: Object.keys(roles).length,
+    roles: Object.entries(roles).map(([id, r]) => ({
+      id,
+      mode: r.mode || "agent",
+      description: r.description || "",
+    })),
+    tasks,
+  };
+}
+
+/**
+ * Syntax highlight YAML for display
+ */
+function highlightYaml(yamlStr) {
+  return yamlStr
+    .split("\n")
+    .map((line) => {
+      // Comments
+      if (line.trim().startsWith("#")) {
+        return `<span style="color:#6a9955">${escapeHtml(line)}</span>`;
+      }
+      // Key-value pairs
+      const keyMatch = line.match(/^(\s*)([a-zA-Z_][a-zA-Z0-9_-]*)(\s*:\s*)(.*)$/);
+      if (keyMatch) {
+        const [, indent, key, colon, value] = keyMatch;
+        let valueHtml = escapeHtml(value);
+        // Highlight strings in quotes
+        if (value.startsWith('"') || value.startsWith("'")) {
+          valueHtml = `<span style="color:#ce9178">${escapeHtml(value)}</span>`;
+        } else if (value === "true" || value === "false") {
+          valueHtml = `<span style="color:#569cd6">${escapeHtml(value)}</span>`;
+        } else if (/^\d+$/.test(value)) {
+          valueHtml = `<span style="color:#b5cea8">${escapeHtml(value)}</span>`;
+        }
+        return `${escapeHtml(indent)}<span style="color:#9cdcfe">${escapeHtml(key)}</span><span style="color:#d4d4d4">${escapeHtml(colon)}</span>${valueHtml}`;
+      }
+      // List items
+      const listMatch = line.match(/^(\s*)(- )(.*)$/);
+      if (listMatch) {
+        const [, indent, dash, rest] = listMatch;
+        return `${escapeHtml(indent)}<span style="color:#d4d4d4">${escapeHtml(dash)}</span>${escapeHtml(rest)}`;
+      }
+      return escapeHtml(line);
+    })
+    .join("\n");
+}
+
+/**
+ * Build sidebar HTML
+ */
+function buildSidebar(baseUrl, activePage = "") {
+  return `
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>Workflow Builder</h1>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="${baseUrl}/" class="${activePage === "dashboard" ? "active" : ""}">Dashboard</a>
+        <a href="${baseUrl}/workflows" class="${activePage === "workflows" ? "active" : ""}">Workflows</a>
+      </nav>
+    </aside>
+  `;
+}
+
+/**
+ * Wrap page content in layout
+ */
+function wrapLayout(content, baseUrl, activePage = "") {
   return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>${escapeHtml(name)}</title></head>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workflow Builder</title>
+  <style>${CSS_STYLES}</style>
+</head>
 <body>
-<h1>Workflow: ${escapeHtml(name)} (read-only)</h1>
-<p><a href="${baseUrl}/workflows">← Workflow List</a> | <a href="${baseUrl}/workflow/edit?name=${encodeURIComponent(name)}">Edit</a> | <a href="${baseUrl}/">← Project Status</a></p>
-${!yamlRaw ? `<p>Workflow not found: ${escapeHtml(name)}</p>` : `<pre><code>${yamlEscaped}</code></pre>`}
+  <div class="layout">
+    ${buildSidebar(baseUrl, activePage)}
+    <main class="main-content">
+      ${content}
+    </main>
+  </div>
 </body>
 </html>`;
 }
 
+/**
+ * Build workflow list page (Phase D UI Spec - Prompt 9)
+ */
+function buildWorkflowListPage(baseUrl) {
+  const workflows = getWorkflowList();
+  
+  if (workflows.length === 0) {
+    const emptyContent = `
+      <div class="page-header">
+        <h1>Workflows</h1>
+        <p>Manage workflow definitions</p>
+      </div>
+      <div class="empty-state">
+        <div class="empty-state-icon">+</div>
+        <p>No workflows found in workflows/</p>
+        <p>Add your first workflow</p>
+      </div>
+    `;
+    return wrapLayout(emptyContent, baseUrl, "workflows");
+  }
+  
+  // Build table rows with workflow metadata
+  const rows = workflows.map((filename) => {
+    const meta = getWorkflowMeta(filename);
+    const displayName = meta ? meta.name : filename.replace(".yaml", "");
+    const taskCount = meta ? meta.taskCount : "—";
+    const version = meta ? meta.version : "—";
+    
+    return `
+      <tr>
+        <td>
+          <a href="${baseUrl}/workflow?name=${encodeURIComponent(filename)}">${escapeHtml(displayName)}</a>
+          <div style="font-size:12px;color:#666">${escapeHtml(filename)}</div>
+        </td>
+        <td>${taskCount}</td>
+        <td><span class="badge badge-default">v${escapeHtml(version)}</span></td>
+        <td><span class="badge badge-success">Ready</span></td>
+        <td>
+          <a href="${baseUrl}/workflow?name=${encodeURIComponent(filename)}">View</a>
+        </td>
+      </tr>
+    `;
+  }).join("");
+  
+  const content = `
+    <div class="page-header">
+      <h1>Workflows</h1>
+      <p>Manage workflow definitions from the workflows/ directory</p>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Workflow Name</th>
+          <th>Tasks</th>
+          <th>Version</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `;
+  
+  return wrapLayout(content, baseUrl, "workflows");
+}
+
+/**
+ * Build workflow detail page (Phase D UI Spec - Prompt 10)
+ * Read-only view with 60/40 split: YAML left, role cards right
+ */
+function buildWorkflowDetailPage(name, baseUrl) {
+  const yamlRaw = getWorkflowYaml(name);
+  const meta = getWorkflowMeta(name);
+  
+  if (!yamlRaw || !meta) {
+    const notFoundContent = `
+      <div class="breadcrumb">
+        <a href="${baseUrl}/workflows">Workflows</a>
+        <span>/</span>
+        <span>${escapeHtml(name)}</span>
+      </div>
+      <div class="card">
+        <p>Workflow not found: ${escapeHtml(name)}</p>
+      </div>
+    `;
+    return wrapLayout(notFoundContent, baseUrl, "workflows");
+  }
+  
+  // Build role cards
+  const roleCards = meta.roles.length > 0
+    ? meta.roles.map((role) => `
+        <div class="role-card">
+          <div class="role-card-header">
+            <h3>${escapeHtml(role.id)}</h3>
+            <span class="mode-badge ${role.mode === "agent" ? "mode-agent" : "mode-plan"}">${escapeHtml(role.mode)}</span>
+          </div>
+          <p>${escapeHtml(role.description || "No description")}</p>
+        </div>
+      `).join("")
+    : '<p style="color:#666">No roles defined</p>';
+  
+  const content = `
+    <div class="breadcrumb">
+      <a href="${baseUrl}/workflows">Workflows</a>
+      <span>/</span>
+      <span>${escapeHtml(meta.name)}</span>
+    </div>
+    
+    <div class="page-header">
+      <h1>${escapeHtml(meta.name)}</h1>
+      <p>Version ${escapeHtml(meta.version)} · ${meta.taskCount} tasks · ${meta.roleCount} roles · Read-only view</p>
+    </div>
+    
+    <div class="split-layout">
+      <div class="split-left">
+        <div class="code-block">
+          <div class="code-header">
+            ${escapeHtml(name)}
+          </div>
+          <div class="code-content">
+            <pre>${highlightYaml(yamlRaw)}</pre>
+          </div>
+        </div>
+      </div>
+      
+      <div class="split-right">
+        <div class="section-header">Roles</div>
+        <div class="role-cards">
+          ${roleCards}
+        </div>
+        
+        <div style="margin-top:24px">
+          <div class="section-header">Tasks Summary</div>
+          <div class="card">
+            <p><strong>${meta.taskCount}</strong> tasks in this workflow</p>
+            ${meta.tasks.slice(0, 5).map((t) => `
+              <div style="margin-top:8px;padding:8px;background:#f9f9f9;border-radius:4px;font-size:13px">
+                <strong>${escapeHtml(t.id || "—")}</strong>
+                <span style="color:#666"> — ${escapeHtml(t.name || "")}</span>
+                ${t.hitl && t.hitl.type !== "none" ? `<span class="badge badge-warning" style="margin-left:8px">${escapeHtml(t.hitl.type)}</span>` : ""}
+              </div>
+            `).join("")}
+            ${meta.tasks.length > 5 ? `<p style="margin-top:8px;color:#666;font-size:13px">...and ${meta.tasks.length - 5} more tasks</p>` : ""}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  return wrapLayout(content, baseUrl, "workflows");
+}
+
+/**
+ * Build workflow edit page (placeholder for Piece 2+)
+ * For Piece 1, this redirects to read-only view
+ */
 function buildWorkflowEditPage(name, baseUrl) {
   const doc = getWorkflowParsed(name);
   if (!doc) {
-    return `<!DOCTYPE html><html><body><p>Workflow not found: ${escapeHtml(name)}</p><a href="${baseUrl}/workflows">← Back</a></body></html>`;
+    const notFoundContent = `
+      <div class="breadcrumb">
+        <a href="${baseUrl}/workflows">Workflows</a>
+        <span>/</span>
+        <span>Edit</span>
+      </div>
+      <div class="card">
+        <p>Workflow not found: ${escapeHtml(name)}</p>
+        <a href="${baseUrl}/workflows">Back to Workflows</a>
+      </div>
+    `;
+    return wrapLayout(notFoundContent, baseUrl, "workflows");
   }
-  const w = doc.workflow || doc;
-  const workflowName = w.name || "";
-  const version = w.version || "";
-  const roles = w.roles || {};
-  const roleEntries = Object.entries(roles)
-    .map(
-      ([id, r]) =>
-        `<div style="border:1px solid #ccc;padding:8px;margin:4px 0;">
-          <strong>${escapeHtml(id)}</strong> — mode: ${escapeHtml(r.mode || "")}, desc: ${escapeHtml(r.description || "")}
-          <form method="POST" action="${baseUrl}/workflow/save?name=${encodeURIComponent(name)}" style="display:inline">
-            <input type="hidden" name="workflow_name" value="${escapeHtml(workflowName)}" />
-            <input type="hidden" name="version" value="${escapeHtml(version)}" />
-            <button type="submit" name="remove_role" value="${escapeHtml(id)}">Remove</button>
-          </form>
-        </div>`
-    )
-    .join("");
+  
+  // For Piece 1, editing is not implemented - show read-only with message
+  const meta = getWorkflowMeta(name);
+  const content = `
+    <div class="breadcrumb">
+      <a href="${baseUrl}/workflows">Workflows</a>
+      <span>/</span>
+      <a href="${baseUrl}/workflow?name=${encodeURIComponent(name)}">${escapeHtml(meta?.name || name)}</a>
+      <span>/</span>
+      <span>Edit</span>
+    </div>
+    
+    <div class="page-header">
+      <h1>Edit: ${escapeHtml(meta?.name || name)}</h1>
+      <p>Editing features coming in Piece 2</p>
+    </div>
+    
+    <div class="card" style="background:#fff3e0;border-color:#f5a623">
+      <p style="color:#e65100">Editing is not yet implemented. This is Piece 1 (read-only view).</p>
+      <p style="margin-top:8px"><a href="${baseUrl}/workflow?name=${encodeURIComponent(name)}">View workflow (read-only)</a></p>
+    </div>
+  `;
+  
+  return wrapLayout(content, baseUrl, "workflows");
+}
 
-  const tasks = w.tasks || [];
-  const taskEntries = tasks
-    .map(
-      (t, i) => {
-        const hitl = t.hitl || {};
-        return `<div style="border:1px solid #999;padding:8px;margin:4px 0;">
-          <strong>${escapeHtml(t.id || "?")}</strong> — ${escapeHtml(t.name || "")} | role: ${escapeHtml(t.role || "")} | on_complete: ${escapeHtml(t.on_complete || "next")}
-          | HITL: ${escapeHtml(hitl.type || "none")} ${hitl.message ? escapeHtml(hitl.message.slice(0, 40)) + "…" : ""}
-          <form method="POST" action="${baseUrl}/workflow/save?name=${encodeURIComponent(name)}" style="display:inline">
-            <input type="hidden" name="workflow_name" value="${escapeHtml(workflowName)}" />
-            <input type="hidden" name="version" value="${escapeHtml(version)}" />
-            <button type="submit" name="remove_task" value="${escapeHtml(String(i))}">Remove</button>
+/**
+ * Build main dashboard page (styled version)
+ */
+function buildDashboardPage(project, baseUrl) {
+  const projects = getProjectList();
+  const pendingGates = getProjectsWithPendingGates();
+  const waitingOn = getWaitingOn(project);
+  const workflowState = getWorkflowState(project);
+  const lastRun = getExecutionLogLastRun(project);
+  const workflows = getWorkflowList();
+  
+  // Project selector
+  const projectOptions = projects.map((p) => 
+    `<option value="${escapeHtml(p)}" ${p === project ? "selected" : ""}>${escapeHtml(p)}</option>`
+  ).join("");
+  
+  // Pending gates list
+  const pendingList = pendingGates.length > 0
+    ? pendingGates.map((p) => {
+        const state = getWorkflowState(p);
+        return `
+          <div class="card" style="border-left:4px solid var(--accent-orange)">
+            <strong>${escapeHtml(p)}</strong>
+            <p style="color:#666;margin-top:4px">Paused at: ${escapeHtml(state?.last_task_id || "—")}</p>
+          </div>
+        `;
+      }).join("")
+    : '<p style="color:#666">No pending gates</p>';
+  
+  // Current project status
+  let statusContent = "";
+  if (workflowState && workflowState.status === "paused") {
+    statusContent = `
+      <div class="card" style="border-left:4px solid var(--accent-orange)">
+        <span class="badge badge-warning">Paused</span>
+        <p style="margin-top:8px"><strong>Task:</strong> ${escapeHtml(workflowState.last_task_id || "—")}</p>
+        <p><strong>Workflow:</strong> ${escapeHtml(workflowState.workflow_path || "—")}</p>
+        <p><strong>Paused at:</strong> ${escapeHtml(workflowState.paused_at || "—")}</p>
+      </div>
+    `;
+  } else {
+    statusContent = '<div class="card"><span class="badge badge-success">Active</span><p style="margin-top:8px">No paused workflows</p></div>';
+  }
+  
+  // Last run
+  const lastRunContent = lastRun
+    ? `
+      <div class="card">
+        <p><strong>Workflow:</strong> ${escapeHtml(lastRun.workflow)}</p>
+        <p><strong>Status:</strong> ${escapeHtml(lastRun.status)}</p>
+        <p><strong>End:</strong> ${escapeHtml(lastRun.end)}</p>
+      </div>
+    `
+    : '<div class="card"><p style="color:#666">No execution log found</p></div>';
+  
+  const content = `
+    <div class="page-header">
+      <h1>Project Dashboard</h1>
+      <p>Workflow orchestration status and management</p>
+    </div>
+    
+    <div style="display:flex;gap:24px;flex-wrap:wrap">
+      <div style="flex:1;min-width:300px">
+        <div class="section-header">Project</div>
+        <div class="card">
+          <form method="GET" action="${baseUrl}/">
+            <select name="project" onchange="this.form.submit()" style="width:100%;padding:8px;font-size:14px;border:1px solid #ddd;border-radius:4px">
+              ${projectOptions}
+            </select>
           </form>
-        </div>`;
-      }
-    )
-    .join("");
-  const roleIds = Object.keys(roles);
-  const roleOptions = roleIds.map((r) => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join("");
-
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Edit ${escapeHtml(name)}</title></head>
-<body>
-<h1>Edit Workflow: ${escapeHtml(name)}</h1>
-<p><a href="${baseUrl}/workflow?name=${encodeURIComponent(name)}">← View (read-only)</a> | <a href="${baseUrl}/workflows">← Workflow List</a></p>
-<form method="POST" action="${baseUrl}/workflow/save?name=${encodeURIComponent(name)}">
-  <p><label>Workflow Name: <input name="workflow_name" value="${escapeHtml(workflowName)}" size="40" /></label></p>
-  <p><label>Version: <input name="version" value="${escapeHtml(version)}" size="20" /></label></p>
-  <h2>Roles</h2>
-  ${roleEntries}
-  <h3>Add Role</h3>
-  <p><label>ID: <input name="new_role_id" placeholder="e.g. developer" /></label></p>
-  <p><label>Mode: <select name="new_role_mode"><option value="agent">agent</option><option value="plan">plan</option></select></label></p>
-  <p><label>Description: <input name="new_role_desc" placeholder="description" size="40" /></label></p>
-  <p><button type="submit" name="add_role" value="1">Add Role</button></p>
-  <hr/>
-  <h2>Tasks</h2>
-  ${taskEntries}
-  <h3>Add Task</h3>
-  <p><label>ID: <input name="new_task_id" placeholder="e.g. my_task" /></label></p>
-  <p><label>Name: <input name="new_task_name" placeholder="Task name" size="40" /></label></p>
-  <p><label>Role: <select name="new_task_role">${roleOptions || "<option value=''>—</option>"}</select></label></p>
-  <p><label>Action: <input name="new_task_action" placeholder="e.g. implement" size="20" /></label></p>
-  <p><label>On Complete: <input name="new_task_on_complete" placeholder="next or task_id" value="next" size="20" /></label></p>
-  <h4>HITL</h4>
-  <p><label>Type: <select name="new_task_hitl_type"><option value="none">none</option><option value="approval">approval</option><option value="question">question</option><option value="info">info</option></select></label></p>
-  <p><label>Message: <input name="new_task_hitl_message" placeholder="HITL message" size="50" /></label></p>
-  <p><button type="submit" name="add_task" value="1">Add Task</button></p>
-  <hr/>
-  <p><button type="submit" name="save" value="1">Save</button></p>
-</form>
-</body>
-</html>`;
+        </div>
+        
+        <div class="section-header">Current Status</div>
+        ${statusContent}
+        
+        <div class="section-header">Last Run</div>
+        ${lastRunContent}
+      </div>
+      
+      <div style="flex:1;min-width:300px">
+        <div class="section-header">Pending Gates <span class="badge badge-warning">${pendingGates.length}</span></div>
+        ${pendingList}
+        
+        <div class="section-header" style="margin-top:24px">Quick Links</div>
+        <div class="card">
+          <p><a href="${baseUrl}/workflows">View All Workflows (${workflows.length})</a></p>
+        </div>
+      </div>
+    </div>
+    
+    <div style="margin-top:24px">
+      <div class="section-header">WAITING_ON.md</div>
+      <div class="code-block">
+        <div class="code-header">${escapeHtml(project)}/WAITING_ON.md</div>
+        <div class="code-content">
+          <pre style="color:#d4d4d4">${escapeHtml(waitingOn)}</pre>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  return wrapLayout(content, baseUrl, "dashboard");
 }
 
 function saveWorkflow(name, body) {
@@ -360,41 +912,46 @@ function createServer() {
     const url = new URL(req.url || "/", `http://localhost:${port}`);
     const project = url.searchParams.get("project") || DEFAULT_PROJECT;
     const workflowName = url.searchParams.get("name");
-    const baseUrl = `http://localhost:${port}`;
+    const baseUrl = "";  // Use relative URLs for cleaner navigation
 
-    const handleResponse = (content, isHtml = false) => {
+    const handleResponse = (content) => {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(isHtml ? content : html(content));
+      res.end(content);
     };
 
+    // POST handler for workflow save (will be used in Piece 2+)
     if (req.method === "POST" && url.pathname === "/workflow/save" && workflowName) {
       let body = "";
       req.on("data", (chunk) => { body += chunk; });
       req.on("end", () => {
         const parsed = parseFormBody(body);
         saveWorkflow(workflowName, parsed);
-        res.writeHead(302, { Location: `${baseUrl}/workflow/edit?name=${encodeURIComponent(workflowName)}` });
+        res.writeHead(302, { Location: `/workflow/edit?name=${encodeURIComponent(workflowName)}` });
         res.end();
       });
       return;
     }
 
+    // Workflow list page
     if (url.pathname === "/workflows") {
-      handleResponse(buildWorkflowListPage(baseUrl), true);
+      handleResponse(buildWorkflowListPage(baseUrl));
       return;
     }
+    
+    // Workflow edit page (placeholder for Piece 2+)
     if (url.pathname === "/workflow/edit" && workflowName) {
-      handleResponse(buildWorkflowEditPage(workflowName, baseUrl), true);
+      handleResponse(buildWorkflowEditPage(workflowName, baseUrl));
       return;
     }
+    
+    // Workflow detail page (read-only)
     if (url.pathname === "/workflow" && workflowName) {
-      handleResponse(buildWorkflowDetailPage(workflowName, baseUrl), true);
+      handleResponse(buildWorkflowDetailPage(workflowName, baseUrl));
       return;
     }
 
-    let content = buildPageContent(project, baseUrl);
-    content += "\n\n---\n\n## Workflows\n\nView: " + baseUrl + "/workflows\n";
-    handleResponse(content);
+    // Main dashboard
+    handleResponse(buildDashboardPage(project, baseUrl));
   });
   return server;
 }
